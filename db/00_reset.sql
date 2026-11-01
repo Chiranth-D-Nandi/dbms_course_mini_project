@@ -61,6 +61,7 @@ CREATE USER IF NOT EXISTS 'app_ro'@'localhost' IDENTIFIED BY 'TatkalRo_SecurePas
 CREATE USER IF NOT EXISTS 'app_ro'@'127.0.0.1' IDENTIFIED BY 'TatkalRo_SecurePass#2026';
 
 GRANT SELECT ON tatkal_db.* TO 'app_ro'@'localhost', 'app_ro'@'127.0.0.1';
+GRANT EXECUTE ON tatkal_db.* TO 'app_ro'@'localhost', 'app_ro'@'127.0.0.1';
 GRANT SHOW VIEW ON tatkal_db.* TO 'app_ro'@'localhost', 'app_ro'@'127.0.0.1';
 
 FLUSH PRIVILEGES;

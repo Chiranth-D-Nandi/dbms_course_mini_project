@@ -543,7 +543,7 @@ proc_cancel: BEGIN
 
     -- Update Booking & Passengers
     UPDATE booking SET status = 'CANCELLED' WHERE pnr = p_pnr;
-    UPDATE passenger SET status = 'CANCELLED' WHERE pnr = p_pnr;
+    UPDATE passenger SET status = 'CANCELLED', run_id = NULL, seat_id = NULL WHERE pnr = p_pnr;
 
     -- Free Seats back into run_seat inventory
     UPDATE run_seat
@@ -579,6 +579,13 @@ BEGIN
     WHERE status = 'PENDING'
       AND expires_at IS NOT NULL
       AND expires_at < NOW();
+
+    -- 3. Clear seat references for expired passengers so seats can be re-allocated
+    UPDATE passenger p
+    JOIN booking b ON p.pnr = b.pnr
+    SET p.run_id = NULL, p.seat_id = NULL
+    WHERE b.status = 'EXPIRED'
+      AND p.run_id IS NOT NULL;
 END$$
 
 DELIMITER ;

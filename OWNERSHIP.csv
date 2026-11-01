@@ -1,4 +1,6 @@
 path_glob,owner
+pytest.ini,Person A
+requirements.txt,Person A
 .gitignore,Person A
 .env.example,Person A
 CONTRIBUTORS.md,Person A
@@ -37,6 +39,7 @@ scripts/demo_expiry.ps1,Person B
 scripts/demo_expiry.sh,Person B
 scripts/preflight.ps1,Person B
 scripts/preflight.sh,Person B
+scripts/preflight_check.py,Person B
 docs/problem_statement.md,Person B
 docs/objectives.md,Person B
 docs/scope.md,Person B
