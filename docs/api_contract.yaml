@@ -1,0 +1,624 @@
+# Owner: Person A
+openapi: 3.0.3
+info:
+  title: Tatkal High-Concurrency Train Booking System API
+  version: 1.0.0
+  description: |
+    Comprehensive REST API specification for the high-concurrency Tatkal Train Booking Engine.
+    Shared contract between Person A (Backend & Data) and Person B (Frontend & Ops).
+servers:
+  - url: http://127.0.0.1:8000/api
+    description: Local Development Backend
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              example: SOLD_OUT
+            message:
+              type: string
+              example: Not enough consecutive seats available in requested class and quota.
+            details:
+              type: object
+
+    User:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          example: 1
+        first_name:
+          type: string
+          example: Chiranth
+        last_name:
+          type: string
+          example: Nandi
+        email:
+          type: string
+          format: email
+          example: chiranth@example.com
+        phone:
+          type: string
+          example: "9876543210"
+        role:
+          type: string
+          enum: [ADMIN, CUSTOMER]
+          example: CUSTOMER
+        created_at:
+          type: string
+          format: date-time
+
+    Station:
+      type: object
+      properties:
+        station_id:
+          type: integer
+          example: 1
+        station_code:
+          type: string
+          example: SBC
+        station_name:
+          type: string
+          example: KSR Bengaluru City
+        city:
+          type: string
+          example: Bengaluru
+        state:
+          type: string
+          example: Karnataka
+
+    TrainStop:
+      type: object
+      properties:
+        stop_seq:
+          type: integer
+          example: 1
+        station_id:
+          type: integer
+          example: 1
+        station_code:
+          type: string
+          example: SBC
+        station_name:
+          type: string
+          example: KSR Bengaluru City
+        arrival_time:
+          type: string
+          nullable: true
+          example: "19:45:00"
+        departure_time:
+          type: string
+          example: "20:00:00"
+        day_offset:
+          type: integer
+          example: 0
+        distance_km:
+          type: integer
+          example: 0
+        halt_duration_minutes:
+          type: integer
+          example: 15
+
+    TrainSearchResult:
+      type: object
+      properties:
+        run_id:
+          type: integer
+          example: 101
+        train_id:
+          type: integer
+          example: 12
+        train_number:
+          type: string
+          example: "12658"
+        train_name:
+          type: string
+          example: Bangalore Mail
+        train_type:
+          type: string
+          enum: [SUPERFAST, EXPRESS, MAIL, RAJDHANI, SHATABDI]
+          example: SUPERFAST
+        source_departure:
+          type: string
+          example: "20:00:00"
+        dest_arrival:
+          type: string
+          example: "04:30:00"
+        distance_km:
+          type: integer
+          example: 360
+        journey_date:
+          type: string
+          format: date
+          example: "2026-11-05"
+        availability:
+          type: array
+          items:
+            type: object
+            properties:
+              class_code:
+                type: string
+                example: "3A"
+              class_name:
+                type: string
+                example: AC 3 Tier
+              general_available:
+                type: integer
+                example: 42
+              tatkal_available:
+                type: integer
+                example: 12
+              base_fare:
+                type: number
+                format: float
+                example: 680.00
+              tatkal_fare:
+                type: number
+                format: float
+                example: 880.00
+
+    PassengerInput:
+      type: object
+      required:
+        - name
+        - dob
+        - gender
+        - id_proof_type
+        - id_proof_no
+      properties:
+        name:
+          type: string
+          example: Ramesh Kumar
+        dob:
+          type: string
+          format: date
+          example: "1995-04-12"
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+          example: MALE
+        id_proof_type:
+          type: string
+          enum: [AADHAAR, PAN, PASSPORT, VOTER_ID]
+          example: AADHAAR
+        id_proof_no:
+          type: string
+          example: "1234-5678-9012"
+
+    BookingCreateRequest:
+      type: object
+      required:
+        - run_id
+        - class_code
+        - source_station_id
+        - dest_station_id
+        - booking_type
+        - passengers
+      properties:
+        run_id:
+          type: integer
+          example: 101
+        class_code:
+          type: string
+          example: "3A"
+        source_station_id:
+          type: integer
+          example: 1
+        dest_station_id:
+          type: integer
+          example: 5
+        booking_type:
+          type: string
+          enum: [GENERAL, TATKAL]
+          example: TATKAL
+        passengers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PassengerInput'
+
+    BookingResponse:
+      type: object
+      properties:
+        pnr:
+          type: integer
+          example: 1000000042
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, CANCELLED, EXPIRED, FAILED]
+          example: PENDING
+        total_fare:
+          type: number
+          format: float
+          example: 1760.00
+        booking_time:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        hold_seconds_remaining:
+          type: integer
+          example: 300
+        message:
+          type: string
+          example: Seats held successfully. Please complete payment within 5 minutes.
+
+    PaymentRequest:
+      type: object
+      required:
+        - amount
+        - method
+      properties:
+        amount:
+          type: number
+          format: float
+          example: 1760.00
+        method:
+          type: string
+          enum: [UPI, CARD, NETBANKING]
+          example: UPI
+
+    PaymentResponse:
+      type: object
+      properties:
+        payment_id:
+          type: integer
+          example: 501
+        pnr:
+          type: integer
+          example: 1000000042
+        txn_ref:
+          type: string
+          example: TXN_20261102_987123
+        status:
+          type: string
+          enum: [SUCCESS, FAILED, REFUNDED]
+          example: SUCCESS
+        booking_status:
+          type: string
+          example: CONFIRMED
+        message:
+          type: string
+          example: Payment confirmed. Ticket successfully booked!
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name, email, phone, password]
+              properties:
+                first_name: { type: string }
+                last_name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                password: { type: string }
+      responses:
+        201:
+          description: User registered successfully
+        422:
+          description: Validation error
+
+  /auth/login:
+    post:
+      summary: Authenticate user and receive JWT pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        200:
+          description: Authenticated successfully
+        401:
+          description: Invalid email or password
+
+  /auth/me:
+    get:
+      summary: Fetch current authenticated user profile
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /stations:
+    get:
+      summary: Autocomplete search for railway stations
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Station name or city search query
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Station'
+
+  /trains/search:
+    get:
+      summary: Search trains between stations on a specific date
+      parameters:
+        - in: query
+          name: from
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: to
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: date
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainSearchResult'
+
+  /trains/{id}:
+    get:
+      summary: Retrieve complete train details and route stops
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        200:
+          description: Train details with stops and running days
+
+  /runs/{run_id}/availability:
+    get:
+      summary: Retrieve class and quota availability for a run
+      parameters:
+        - in: path
+          name: run_id
+          required: true
+          schema: { type: integer }
+      responses:
+        200:
+          description: Class-wise availability
+
+  /runs/{run_id}/seats:
+    get:
+      summary: Retrieve seat map layout for a train run
+      parameters:
+        - in: path
+          name: run_id
+          required: true
+          schema: { type: integer }
+      responses:
+        200:
+          description: Coach and seat status map
+
+  /tatkal/status:
+    get:
+      summary: Get Tatkal window status and countdown for a run and class
+      parameters:
+        - in: query
+          name: run_id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: class
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Window status and seconds remaining
+
+  /bookings:
+    post:
+      summary: Attempt to hold and book seats under concurrency control
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreateRequest'
+      responses:
+        201:
+          description: Seats held successfully (Pending Payment)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        409:
+          description: Sold out / seats unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        423:
+          description: Tatkal window is not yet open
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          description: Booking request throttled
+
+  /bookings/{pnr}/pay:
+    post:
+      summary: Simulate payment and confirm booking with Idempotency-Key
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: pnr
+          required: true
+          schema: { type: integer }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        200:
+          description: Payment confirmed and ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        410:
+          description: Seat hold has expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /bookings/{pnr}/cancel:
+    post:
+      summary: Cancel booking and compute refund according to policy slabs
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: pnr
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        200:
+          description: Booking cancelled and refund processed
+
+  /bookings/mine:
+    get:
+      summary: List all bookings for the authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: List of user bookings
+
+  /bookings/{pnr}:
+    get:
+      summary: Get details, ticket, and passengers for a specific booking
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: pnr
+          required: true
+          schema: { type: integer }
+      responses:
+        200:
+          description: Booking details
+
+  /search/trains:
+    get:
+      summary: Semantic vector search for trains via ChromaDB
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string }
+        - in: query
+          name: train_type
+          schema: { type: string }
+      responses:
+        200:
+          description: Top matched trains ranked by cosine similarity
+
+  /search/faq:
+    get:
+      summary: Semantic vector search for Tatkal policies & FAQs via ChromaDB
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string }
+      responses:
+        200:
+          description: Top matched FAQ chunks ranked by cosine similarity
+
+  /admin/reports/revenue:
+    get:
+      summary: Admin aggregate revenue report
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Revenue per train/run
+
+  /admin/reports/occupancy:
+    get:
+      summary: Admin occupancy percentage report
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Occupancy metrics
+
+  /admin/reports/tatkal-demand:
+    get:
+      summary: Admin Tatkal demand & surge metrics
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Tatkal demand metrics
+
+  /admin/audit-log:
+    get:
+      summary: Read-only view of database trigger audit trail
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Audit logs with JSON old/new diffs
