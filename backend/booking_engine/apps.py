@@ -1,0 +1,6 @@
+# Owner: Person A
+from django.apps import AppConfig
+
+class BookingEngineConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "booking_engine"
