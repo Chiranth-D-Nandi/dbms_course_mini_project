@@ -9,7 +9,7 @@
   </defs>
 
   <text x="50" y="45" font-size="22" font-weight="bold" fill="#0f172a">Relational Database Schema Diagram with Referential Integrity Constraints</text>
-  <text x="50" y="70" font-size="13" fill="#64748b">Tatkal High-Concurrency Reservation Engine &bull; Elmasri &amp; Navathe Notation (Arrows originate at Foreign Key and point to referenced Primary Key)</text>
+  <text x="50" y="70" font-size="13" fill="#64748b">Tatkal High-Concurrency Reservation Engine &#8226; Elmasri &amp; Navathe Notation (Arrows originate at Foreign Key and point to referenced Primary Key)</text>
 
   <text x="60" y="112" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">APP_USER</text>
   <g filter="url(#shadow)">
@@ -237,9 +237,9 @@
   <g transform="translate(60, 1000)">
     <rect width="1480" height="260" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5" rx="8" />
     <text x="25" y="30" font-size="14" font-weight="bold" fill="#0f172a">Diagram Legend &amp; Referential Integrity Rules (Elmasri &amp; Navathe Convention)</text>
-    <text x="25" y="55" font-size="12" fill="#475569">&bull; <tspan font-weight="bold">Table Boxes:</tspan> Each horizontal block represents a base relation in Boyce-Codd Normal Form (BCNF).</text>
-    <text x="25" y="78" font-size="12" fill="#475569">&bull; <tspan font-weight="bold">Primary Key (PK):</tspan> Attribute name has a <tspan text-decoration="underline" font-weight="bold">solid underline</tspan>. Composite keys (e.g., TRAIN_STOP[train_id, stop_seq]) have all component attributes underlined.</text>
-    <text x="25" y="101" font-size="12" fill="#475569">&bull; <tspan font-weight="bold">Foreign Key (FK) Arrows:</tspan> Directed arrows originate from the child relation's Foreign Key attribute and point directly to the parent relation's referenced Primary Key.</text>
+    <text x="25" y="55" font-size="12" fill="#475569">&#8226; <tspan font-weight="bold">Table Boxes:</tspan> Each horizontal block represents a base relation in Boyce-Codd Normal Form (BCNF).</text>
+    <text x="25" y="78" font-size="12" fill="#475569">&#8226; <tspan font-weight="bold">Primary Key (PK):</tspan> Attribute name has a <tspan text-decoration="underline" font-weight="bold">solid underline</tspan>. Composite keys (e.g., TRAIN_STOP[train_id, stop_seq]) have all component attributes underlined.</text>
+    <text x="25" y="101" font-size="12" fill="#475569">&#8226; <tspan font-weight="bold">Foreign Key (FK) Arrows:</tspan> Directed arrows originate from the child relation's Foreign Key attribute and point directly to the parent relation's referenced Primary Key.</text>
     
     <line x1="25" y1="120" x2="1455" y2="120" stroke="#e2e8f0" stroke-width="1" />
     
