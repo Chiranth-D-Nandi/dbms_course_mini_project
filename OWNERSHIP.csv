@@ -15,6 +15,7 @@ docs/api_contract.yaml,Person A
 docs/api_contract.md,Person A
 docs/er_diagram.md,Person A
 docs/relational_schema.md,Person A
+docs/relational_schema_diagram.svg,Person A
 docs/data_dictionary.md,Person A
 docs/db_choice_justification.md,Person A
 docs/sql_vector_implementation.md,Person A

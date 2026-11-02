@@ -1,7 +1,18 @@
 <!-- Owner: Person A -->
 # Relational Schema & Normalization Analysis (3NF / BCNF)
 
-## 1. Relational Schema Representation
+## 1. Visual Relational Schema Diagram (Elmasri & Navathe Style)
+
+Below is the formal **Relational Database Schema Diagram with Referential Integrity Constraints** following the standard Elmasri & Navathe textbook convention. 
+- Relations are depicted as rectangular blocks with attribute cells.
+- **Primary key** attributes have a solid underline (composite primary keys have all component attributes underlined).
+- Directed arrows originate from the **foreign key** attributes and point directly to the referenced **primary key** attributes.
+
+![Relational Database Schema Diagram](relational_schema_diagram.svg)
+
+---
+
+## 2. Relational Schema Representation
 
 Notation:
 - **`TABLE_NAME`** (`Primary_Key`, Non_Key_Attributes, `Foreign_Key*`)

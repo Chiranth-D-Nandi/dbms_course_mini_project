@@ -1,0 +1,266 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="100%" height="100%" style="background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#1e293b" />
+    </marker>
+    <filter id="shadow" x="-2%" y="-4%" width="104%" height="112%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <text x="50" y="45" font-size="22" font-weight="bold" fill="#0f172a">Relational Database Schema Diagram with Referential Integrity Constraints</text>
+  <text x="50" y="70" font-size="13" fill="#64748b">Tatkal High-Concurrency Reservation Engine &bull; Elmasri &amp; Navathe Notation (Arrows originate at Foreign Key and point to referenced Primary Key)</text>
+
+  <text x="60" y="112" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">APP_USER</text>
+  <g filter="url(#shadow)">
+    <rect x="60" y="120" width="549.5" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="102.5" y="139" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">user_id</text>
+    <line x1="76.25" y1="142" x2="128.75" y2="142" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="145" y1="120" x2="145" y2="150" stroke="#cbd5e1" stroke-width="1" />
+    <text x="199.5" y="139" font-size="11.5" fill="#334155" text-anchor="middle">first_name</text>
+    <line x1="254.0" y1="120" x2="254.0" y2="150" stroke="#cbd5e1" stroke-width="1" />
+    <text x="304.25" y="139" font-size="11.5" fill="#334155" text-anchor="middle">last_name</text>
+    <line x1="354.5" y1="120" x2="354.5" y2="150" stroke="#cbd5e1" stroke-width="1" />
+    <text x="397.0" y="139" font-size="11.5" fill="#334155" text-anchor="middle">email</text>
+    <line x1="439.5" y1="120" x2="439.5" y2="150" stroke="#cbd5e1" stroke-width="1" />
+    <text x="482.0" y="139" font-size="11.5" fill="#334155" text-anchor="middle">phone</text>
+    <line x1="524.5" y1="120" x2="524.5" y2="150" stroke="#cbd5e1" stroke-width="1" />
+    <text x="567.0" y="139" font-size="11.5" fill="#334155" text-anchor="middle">role</text>
+  </g>
+  <text x="60" y="222" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">STATION</text>
+  <g filter="url(#shadow)">
+    <rect x="60" y="230" width="531.0" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="114.5" y="249" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">station_id</text>
+    <line x1="77.0" y1="252" x2="152.0" y2="252" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="169.0" y1="230" x2="169.0" y2="260" stroke="#cbd5e1" stroke-width="1" />
+    <text x="232.0" y="249" font-size="11.5" fill="#334155" text-anchor="middle">station_code</text>
+    <line x1="295.0" y1="230" x2="295.0" y2="260" stroke="#cbd5e1" stroke-width="1" />
+    <text x="358.0" y="249" font-size="11.5" fill="#334155" text-anchor="middle">station_name</text>
+    <line x1="421.0" y1="230" x2="421.0" y2="260" stroke="#cbd5e1" stroke-width="1" />
+    <text x="463.5" y="249" font-size="11.5" fill="#334155" text-anchor="middle">city</text>
+    <line x1="506.0" y1="230" x2="506.0" y2="260" stroke="#cbd5e1" stroke-width="1" />
+    <text x="548.5" y="249" font-size="11.5" fill="#334155" text-anchor="middle">state</text>
+  </g>
+  <text x="60" y="332" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">TRAIN</text>
+  <g filter="url(#shadow)">
+    <rect x="60" y="340" width="536.5" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="106.0" y="359" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">train_id</text>
+    <line x1="76.0" y1="362" x2="136.0" y2="362" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="152.0" y1="340" x2="152.0" y2="370" stroke="#cbd5e1" stroke-width="1" />
+    <text x="215.0" y="359" font-size="11.5" fill="#334155" text-anchor="middle">train_number</text>
+    <line x1="278.0" y1="340" x2="278.0" y2="370" stroke="#cbd5e1" stroke-width="1" />
+    <text x="332.5" y="359" font-size="11.5" fill="#334155" text-anchor="middle">train_name</text>
+    <line x1="387.0" y1="340" x2="387.0" y2="370" stroke="#cbd5e1" stroke-width="1" />
+    <text x="441.5" y="359" font-size="11.5" fill="#334155" text-anchor="middle">train_type</text>
+    <line x1="496.0" y1="340" x2="496.0" y2="370" stroke="#cbd5e1" stroke-width="1" />
+    <text x="546.25" y="359" font-size="11.5" fill="#334155" text-anchor="middle">is_active</text>
+  </g>
+  <text x="60" y="442" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">TRAIN_RUNNING_DAY</text>
+  <g filter="url(#shadow)">
+    <rect x="60" y="450" width="209.5" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="106.0" y="469" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">train_id</text>
+    <line x1="76.0" y1="472" x2="136.0" y2="472" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="152.0" y1="450" x2="152.0" y2="480" stroke="#cbd5e1" stroke-width="1" />
+    <text x="210.75" y="469" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">day_of_week</text>
+    <line x1="169.5" y1="472" x2="252.0" y2="472" stroke="#0f172a" stroke-width="1.5" />
+  </g>
+  <text x="60" y="552" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">TRAIN_STOP</text>
+  <g filter="url(#shadow)">
+    <rect x="60" y="560" width="594.5" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="106.0" y="579" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">train_id</text>
+    <line x1="76.0" y1="582" x2="136.0" y2="582" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="152.0" y1="560" x2="152.0" y2="590" stroke="#cbd5e1" stroke-width="1" />
+    <text x="198.0" y="579" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">stop_seq</text>
+    <line x1="168.0" y1="582" x2="228.0" y2="582" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="244.0" y1="560" x2="244.0" y2="590" stroke="#cbd5e1" stroke-width="1" />
+    <text x="298.5" y="579" font-size="11.5" fill="#334155" text-anchor="middle">station_id</text>
+    <line x1="353.0" y1="560" x2="353.0" y2="590" stroke="#cbd5e1" stroke-width="1" />
+    <text x="399.0" y="579" font-size="11.5" fill="#334155" text-anchor="middle">arr_time</text>
+    <line x1="445.0" y1="560" x2="445.0" y2="590" stroke="#cbd5e1" stroke-width="1" />
+    <text x="491.0" y="579" font-size="11.5" fill="#334155" text-anchor="middle">dep_time</text>
+    <line x1="537.0" y1="560" x2="537.0" y2="590" stroke="#cbd5e1" stroke-width="1" />
+    <text x="595.75" y="579" font-size="11.5" fill="#334155" text-anchor="middle">distance_km</text>
+  </g>
+  <text x="60" y="672" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">SEAT_CLASS</text>
+  <g filter="url(#shadow)">
+    <rect x="60" y="680" width="538.0" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="114.5" y="699" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">class_code</text>
+    <line x1="77.0" y1="702" x2="152.0" y2="702" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="169.0" y1="680" x2="169.0" y2="710" stroke="#cbd5e1" stroke-width="1" />
+    <text x="223.5" y="699" font-size="11.5" fill="#334155" text-anchor="middle">class_name</text>
+    <line x1="278.0" y1="680" x2="278.0" y2="710" stroke="#cbd5e1" stroke-width="1" />
+    <text x="320.5" y="699" font-size="11.5" fill="#334155" text-anchor="middle">is_ac</text>
+    <line x1="363.0" y1="680" x2="363.0" y2="710" stroke="#cbd5e1" stroke-width="1" />
+    <text x="421.75" y="699" font-size="11.5" fill="#334155" text-anchor="middle">fare_per_km</text>
+    <line x1="480.5" y1="680" x2="480.5" y2="710" stroke="#cbd5e1" stroke-width="1" />
+    <text x="539.25" y="699" font-size="11.5" fill="#334155" text-anchor="middle">tatkal_time</text>
+  </g>
+  <text x="60" y="782" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">COACH</text>
+  <g filter="url(#shadow)">
+    <rect x="60" y="790" width="419.0" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="106.0" y="809" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">coach_id</text>
+    <line x1="76.0" y1="812" x2="136.0" y2="812" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="152.0" y1="790" x2="152.0" y2="820" stroke="#cbd5e1" stroke-width="1" />
+    <text x="198.0" y="809" font-size="11.5" fill="#334155" text-anchor="middle">train_id</text>
+    <line x1="244.0" y1="790" x2="244.0" y2="820" stroke="#cbd5e1" stroke-width="1" />
+    <text x="298.5" y="809" font-size="11.5" fill="#334155" text-anchor="middle">class_code</text>
+    <line x1="353.0" y1="790" x2="353.0" y2="820" stroke="#cbd5e1" stroke-width="1" />
+    <text x="416.0" y="809" font-size="11.5" fill="#334155" text-anchor="middle">coach_number</text>
+  </g>
+  <text x="60" y="902" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">SEAT</text>
+  <g filter="url(#shadow)">
+    <rect x="60" y="910" width="403.5" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="102.5" y="929" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">seat_id</text>
+    <line x1="76.25" y1="932" x2="128.75" y2="932" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="145" y1="910" x2="145" y2="940" stroke="#cbd5e1" stroke-width="1" />
+    <text x="191.0" y="929" font-size="11.5" fill="#334155" text-anchor="middle">coach_id</text>
+    <line x1="237.0" y1="910" x2="237.0" y2="940" stroke="#cbd5e1" stroke-width="1" />
+    <text x="295.75" y="929" font-size="11.5" fill="#334155" text-anchor="middle">seat_number</text>
+    <line x1="354.5" y1="910" x2="354.5" y2="940" stroke="#cbd5e1" stroke-width="1" />
+    <text x="409.0" y="929" font-size="11.5" fill="#334155" text-anchor="middle">berth_type</text>
+  </g>
+  <text x="840" y="112" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">TRAIN_RUN</text>
+  <g filter="url(#shadow)">
+    <rect x="840" y="120" width="412.0" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="882.5" y="139" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">run_id</text>
+    <line x1="860.0" y1="142" x2="905.0" y2="142" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="925" y1="120" x2="925" y2="150" stroke="#cbd5e1" stroke-width="1" />
+    <text x="971.0" y="139" font-size="11.5" fill="#334155" text-anchor="middle">train_id</text>
+    <line x1="1017.0" y1="120" x2="1017.0" y2="150" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1080.0" y="139" font-size="11.5" fill="#334155" text-anchor="middle">journey_date</text>
+    <line x1="1143.0" y1="120" x2="1143.0" y2="150" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1197.5" y="139" font-size="11.5" fill="#334155" text-anchor="middle">run_status</text>
+  </g>
+  <text x="840" y="232" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">RUN_SEAT</text>
+  <g filter="url(#shadow)">
+    <rect x="840" y="240" width="623.0" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="882.5" y="259" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">run_id</text>
+    <line x1="860.0" y1="262" x2="905.0" y2="262" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="925" y1="240" x2="925" y2="270" stroke="#cbd5e1" stroke-width="1" />
+    <text x="967.5" y="259" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">seat_id</text>
+    <line x1="941.25" y1="262" x2="993.75" y2="262" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="1010" y1="240" x2="1010" y2="270" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1064.5" y="259" font-size="11.5" fill="#334155" text-anchor="middle">quota_type</text>
+    <line x1="1119.0" y1="240" x2="1119.0" y2="270" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1177.75" y="259" font-size="11.5" fill="#334155" text-anchor="middle">seat_status</text>
+    <line x1="1236.5" y1="240" x2="1236.5" y2="270" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1295.25" y="259" font-size="11.5" fill="#334155" text-anchor="middle">held_by_pnr</text>
+    <line x1="1354.0" y1="240" x2="1354.0" y2="270" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1408.5" y="259" font-size="11.5" fill="#334155" text-anchor="middle">version_no</text>
+  </g>
+  <text x="840" y="372" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">BOOKING</text>
+  <g filter="url(#shadow)">
+    <rect x="840" y="380" width="759.0" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="882.5" y="399" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">pnr</text>
+    <line x1="871.25" y1="402" x2="893.75" y2="402" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="925" y1="380" x2="925" y2="410" stroke="#cbd5e1" stroke-width="1" />
+    <text x="967.5" y="399" font-size="11.5" fill="#334155" text-anchor="middle">user_id</text>
+    <line x1="1010" y1="380" x2="1010" y2="410" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1052.5" y="399" font-size="11.5" fill="#334155" text-anchor="middle">run_id</text>
+    <line x1="1095" y1="380" x2="1095" y2="410" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1149.5" y="399" font-size="11.5" fill="#334155" text-anchor="middle">source_stn</text>
+    <line x1="1204.0" y1="380" x2="1204.0" y2="410" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1250.0" y="399" font-size="11.5" fill="#334155" text-anchor="middle">dest_stn</text>
+    <line x1="1296.0" y1="380" x2="1296.0" y2="410" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1350.5" y="399" font-size="11.5" fill="#334155" text-anchor="middle">class_code</text>
+    <line x1="1405.0" y1="380" x2="1405.0" y2="410" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1447.5" y="399" font-size="11.5" fill="#334155" text-anchor="middle">status</text>
+    <line x1="1490.0" y1="380" x2="1490.0" y2="410" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1544.5" y="399" font-size="11.5" fill="#334155" text-anchor="middle">total_fare</text>
+  </g>
+  <text x="840" y="542" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">PASSENGER</text>
+  <g filter="url(#shadow)">
+    <rect x="840" y="550" width="644.5" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="882.5" y="569" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">pnr</text>
+    <line x1="871.25" y1="572" x2="893.75" y2="572" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="925" y1="550" x2="925" y2="580" stroke="#cbd5e1" stroke-width="1" />
+    <text x="992.25" y="569" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">passenger_seq</text>
+    <line x1="943.5" y1="572" x2="1041.0" y2="572" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="1059.5" y1="550" x2="1059.5" y2="580" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1102.0" y="569" font-size="11.5" fill="#334155" text-anchor="middle">name</text>
+    <line x1="1144.5" y1="550" x2="1144.5" y2="580" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1187.0" y="569" font-size="11.5" fill="#334155" text-anchor="middle">gender</text>
+    <line x1="1229.5" y1="550" x2="1229.5" y2="580" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1272.0" y="569" font-size="11.5" fill="#334155" text-anchor="middle">fare</text>
+    <line x1="1314.5" y1="550" x2="1314.5" y2="580" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1357.0" y="569" font-size="11.5" fill="#334155" text-anchor="middle">run_id</text>
+    <line x1="1399.5" y1="550" x2="1399.5" y2="580" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1442.0" y="569" font-size="11.5" fill="#334155" text-anchor="middle">seat_id</text>
+  </g>
+  <text x="840" y="692" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">PAYMENT</text>
+  <g filter="url(#shadow)">
+    <rect x="840" y="700" width="534.0" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="894.5" y="719" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">payment_id</text>
+    <line x1="857.0" y1="722" x2="932.0" y2="722" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="949.0" y1="700" x2="949.0" y2="730" stroke="#cbd5e1" stroke-width="1" />
+    <text x="991.5" y="719" font-size="11.5" fill="#334155" text-anchor="middle">pnr</text>
+    <line x1="1034.0" y1="700" x2="1034.0" y2="730" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1076.5" y="719" font-size="11.5" fill="#334155" text-anchor="middle">amount</text>
+    <line x1="1119.0" y1="700" x2="1119.0" y2="730" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1161.5" y="719" font-size="11.5" fill="#334155" text-anchor="middle">method</text>
+    <line x1="1204.0" y1="700" x2="1204.0" y2="730" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1246.5" y="719" font-size="11.5" fill="#334155" text-anchor="middle">status</text>
+    <line x1="1289.0" y1="700" x2="1289.0" y2="730" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1331.5" y="719" font-size="11.5" fill="#334155" text-anchor="middle">txn_ref</text>
+  </g>
+  <text x="840" y="822" font-size="13" font-weight="bold" fill="#0f2e5a" letter-spacing="0.5">CANCELLATION</text>
+  <g filter="url(#shadow)">
+    <rect x="840" y="830" width="582.0" height="30" fill="#f8fafc" stroke="#334155" stroke-width="1.5" rx="3" />
+    <text x="915.75" y="849" font-size="11.5" font-weight="bold" fill="#0f172a" text-anchor="middle">cancellation_id</text>
+    <line x1="859.5" y1="852" x2="972.0" y2="852" stroke="#0f172a" stroke-width="1.5" />
+    <line x1="991.5" y1="830" x2="991.5" y2="860" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1034.0" y="849" font-size="11.5" fill="#334155" text-anchor="middle">pnr</text>
+    <line x1="1076.5" y1="830" x2="1076.5" y2="860" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1139.5" y="849" font-size="11.5" fill="#334155" text-anchor="middle">cancelled_at</text>
+    <line x1="1202.5" y1="830" x2="1202.5" y2="860" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1269.75" y="849" font-size="11.5" fill="#334155" text-anchor="middle">refund_amount</text>
+    <line x1="1337.0" y1="830" x2="1337.0" y2="860" stroke="#cbd5e1" stroke-width="1" />
+    <text x="1379.5" y="849" font-size="11.5" fill="#334155" text-anchor="middle">reason</text>
+  </g>
+
+  <path d="M 106.0 450 L 106.0 436 L 106.0 436 L 106.0 340" fill="none" stroke="#0284c7" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 60 575.0 L 35 575.0 L 35 328 L 106.0 328 L 106.0 340" fill="none" stroke="#0284c7" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 244.0 575.0 L 219.0 575.0 L 219.0 218 L 114.5 218 L 114.5 230" fill="none" stroke="#059669" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 152.0 805.0 L 127.0 805.0 L 127.0 328 L 106.0 328 L 106.0 340" fill="none" stroke="#0284c7" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 298.5 790 L 298.5 776 L 114.5 776 L 114.5 680" fill="none" stroke="#d97706" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 191.0 910 L 191.0 896 L 106.0 896 L 106.0 790" fill="none" stroke="#6366f1" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 925 135.0 L 538.5 135.0 L 538.5 328 L 106.0 328 L 106.0 340" fill="none" stroke="#0284c7" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 882.5 240 L 882.5 226 L 882.5 226 L 882.5 120" fill="none" stroke="#0891b2" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 925 255.0 L 535.0 255.0 L 535.0 898 L 102.5 898 L 102.5 910" fill="none" stroke="#6366f1" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 925 395.0 L 535.0 395.0 L 535.0 108 L 102.5 108 L 102.5 120" fill="none" stroke="#dc2626" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 1095 395.0 L 1120 395.0 L 1120 108 L 882.5 108 L 882.5 120" fill="none" stroke="#0891b2" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 882.5 550 L 882.5 536 L 882.5 536 L 882.5 380" fill="none" stroke="#7c3aed" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 1034.0 715.0 L 1059.0 715.0 L 1059.0 368 L 882.5 368 L 882.5 380" fill="none" stroke="#7c3aed" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+  <path d="M 1076.5 845.0 L 1101.5 845.0 L 1101.5 368 L 882.5 368 L 882.5 380" fill="none" stroke="#7c3aed" stroke-width="1.4" marker-end="url(#arrow)" stroke-linejoin="round" />
+
+
+  <g transform="translate(60, 1000)">
+    <rect width="1480" height="260" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5" rx="8" />
+    <text x="25" y="30" font-size="14" font-weight="bold" fill="#0f172a">Diagram Legend &amp; Referential Integrity Rules (Elmasri &amp; Navathe Convention)</text>
+    <text x="25" y="55" font-size="12" fill="#475569">&bull; <tspan font-weight="bold">Table Boxes:</tspan> Each horizontal block represents a base relation in Boyce-Codd Normal Form (BCNF).</text>
+    <text x="25" y="78" font-size="12" fill="#475569">&bull; <tspan font-weight="bold">Primary Key (PK):</tspan> Attribute name has a <tspan text-decoration="underline" font-weight="bold">solid underline</tspan>. Composite keys (e.g., TRAIN_STOP[train_id, stop_seq]) have all component attributes underlined.</text>
+    <text x="25" y="101" font-size="12" fill="#475569">&bull; <tspan font-weight="bold">Foreign Key (FK) Arrows:</tspan> Directed arrows originate from the child relation's Foreign Key attribute and point directly to the parent relation's referenced Primary Key.</text>
+    
+    <line x1="25" y1="120" x2="1455" y2="120" stroke="#e2e8f0" stroke-width="1" />
+    
+    <text x="25" y="145" font-size="13" font-weight="bold" fill="#0f172a">Referential Integrity Constraint Color Key:</text>
+    <circle cx="35" cy="170" r="5" fill="#0284c7" />
+    <text x="48" y="174" font-size="11.5" fill="#334155"><tspan font-weight="bold">Train Route &amp; Rolling Stock:</tspan> FK referencing TRAIN(train_id) with ON DELETE CASCADE</text>
+
+    <circle cx="35" cy="195" r="5" fill="#059669" />
+    <text x="48" y="199" font-size="11.5" fill="#334155"><tspan font-weight="bold">Station Halts &amp; Corridors:</tspan> FK referencing STATION(station_id) with ON DELETE RESTRICT</text>
+
+    <circle cx="35" cy="220" r="5" fill="#dc2626" />
+    <text x="48" y="224" font-size="11.5" fill="#334155"><tspan font-weight="bold">User Reservations:</tspan> FK referencing APP_USER(user_id) with ON DELETE RESTRICT</text>
+
+    <circle cx="680" cy="170" r="5" fill="#0891b2" />
+    <text x="693" y="174" font-size="11.5" fill="#334155"><tspan font-weight="bold">Calendar Train Runs:</tspan> FK referencing TRAIN_RUN(run_id) with ON DELETE CASCADE</text>
+
+    <circle cx="680" cy="195" r="5" fill="#7c3aed" />
+    <text x="693" y="199" font-size="11.5" fill="#334155"><tspan font-weight="bold">Passenger Ticket Booking:</tspan> FK referencing BOOKING(pnr) with ON DELETE CASCADE</text>
+
+    <circle cx="680" cy="220" r="5" fill="#6366f1" />
+    <text x="693" y="224" font-size="11.5" fill="#334155"><tspan font-weight="bold">Seat &amp; Coach Topology:</tspan> FK referencing COACH(coach_id) / SEAT(seat_id)</text>
+  </g>
+
+</svg>
