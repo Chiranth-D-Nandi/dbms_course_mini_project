@@ -66,9 +66,13 @@ def admin_auth_headers(admin_user):
 
 @pytest.fixture
 def sample_run_id():
+    import datetime
     from booking_engine.models import Coach
     train_ids = Coach.objects.filter(class_code="3A").values_list("train_id", flat=True)
-    run = TrainRun.objects.filter(train_id__in=train_ids, run_status="SCHEDULED").first()
+    future_date = datetime.date.today() + datetime.timedelta(days=3)
+    run = TrainRun.objects.filter(train_id__in=train_ids, run_status="SCHEDULED", journey_date__gte=future_date).first()
+    if not run:
+        run = TrainRun.objects.filter(train_id__in=train_ids, run_status="SCHEDULED").first()
     return run.run_id if run else 1
 
 @pytest.fixture
