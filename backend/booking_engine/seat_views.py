@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import connections
 from datetime import datetime, date, time, timedelta
+from zoneinfo import ZoneInfo
 from .models import TrainRun, SeatClass
 
 def get_tatkal_window_info(journey_date: date, class_code: str):
@@ -26,7 +27,7 @@ def get_tatkal_window_info(journey_date: date, class_code: str):
     open_dt = datetime.combine(booking_open_date, time(open_hour, 0, 0))
     close_dt = datetime.combine(journey_date, time(23, 59, 59))
 
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("Asia/Kolkata")).replace(tzinfo=None)
 
     if now < open_dt:
         time_status = "NOT_OPEN"
@@ -82,10 +83,7 @@ class SeatMapView(APIView):
                     s.seat_number,
                     s.berth_type,
                     rs.quota_type,
-                    CASE 
-                        WHEN rs.seat_status = 'HELD' AND rs.hold_expires_at < NOW() THEN 'AVAILABLE'
-                        ELSE rs.seat_status
-                    END AS effective_status,
+                    rs.seat_status AS effective_status,
                     rs.hold_expires_at
                 FROM coach c
                 JOIN seat s ON c.coach_id = s.coach_id

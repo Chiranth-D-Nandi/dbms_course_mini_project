@@ -18,11 +18,11 @@ export default function Footer() {
             </span>
           </div>
           <p className="text-slate-400 text-[11px] leading-relaxed">
-            Next-Generation High-Concurrency Passenger Reservation &amp; Tatkal Booking Engine with serialized berth locks and instant cancellation credit.
+            Next-Generation High-Concurrency Passenger Reservation &amp; Tatkal Booking Engine with serialized berth locks and simulated cancellation refunds.
           </p>
           <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1">
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Centre for Railway Information Systems (CRIS)</span>
+            <span>DBMS course project · payment simulation</span>
           </div>
         </div>
 

@@ -1,624 +1,770 @@
-# Owner: Person A
 openapi: 3.0.3
 info:
-  title: Tatkal High-Concurrency Train Booking System API
+  title: Tatkal course project API
   version: 1.0.0
-  description: |
-    Comprehensive REST API specification for the high-concurrency Tatkal Train Booking Engine.
-    Shared contract between Person A (Backend & Data) and Person B (Frontend & Ops).
+  description: Simulated payment and simplified refund policy. Canonical routes retain the exact trailing slash
+    shown.
 servers:
-  - url: http://127.0.0.1:8000/api
-    description: Local Development Backend
-
+- url: http://127.0.0.1:8000/api
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
   schemas:
-    ErrorResponse:
-      type: object
-      required:
-        - error
-      properties:
-        error:
-          type: object
-          required:
-            - code
-            - message
-          properties:
-            code:
-              type: string
-              example: SOLD_OUT
-            message:
-              type: string
-              example: Not enough consecutive seats available in requested class and quota.
-            details:
-              type: object
-
-    User:
+    LoginRequest:
       type: object
       properties:
-        user_id:
-          type: integer
-          example: 1
-        first_name:
-          type: string
-          example: Chiranth
-        last_name:
-          type: string
-          example: Nandi
         email:
           type: string
           format: email
-          example: chiranth@example.com
+        password:
+          type: string
+      required:
+      - email
+      - password
+    RegisterRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 50
+        last_name:
+          type: string
+          maxLength: 50
+        email:
+          type: string
+          format: email
         phone:
           type: string
-          example: "9876543210"
+          pattern: ^[0-9]{10}$
+        password:
+          type: string
+          minLength: 6
         role:
           type: string
-          enum: [ADMIN, CUSTOMER]
-          example: CUSTOMER
-        created_at:
-          type: string
-          format: date-time
-
-    Station:
-      type: object
-      properties:
-        station_id:
-          type: integer
-          example: 1
-        station_code:
-          type: string
-          example: SBC
-        station_name:
-          type: string
-          example: KSR Bengaluru City
-        city:
-          type: string
-          example: Bengaluru
-        state:
-          type: string
-          example: Karnataka
-
-    TrainStop:
-      type: object
-      properties:
-        stop_seq:
-          type: integer
-          example: 1
-        station_id:
-          type: integer
-          example: 1
-        station_code:
-          type: string
-          example: SBC
-        station_name:
-          type: string
-          example: KSR Bengaluru City
-        arrival_time:
-          type: string
-          nullable: true
-          example: "19:45:00"
-        departure_time:
-          type: string
-          example: "20:00:00"
-        day_offset:
-          type: integer
-          example: 0
-        distance_km:
-          type: integer
-          example: 0
-        halt_duration_minutes:
-          type: integer
-          example: 15
-
-    TrainSearchResult:
-      type: object
-      properties:
-        run_id:
-          type: integer
-          example: 101
-        train_id:
-          type: integer
-          example: 12
-        train_number:
-          type: string
-          example: "12658"
-        train_name:
-          type: string
-          example: Bangalore Mail
-        train_type:
-          type: string
-          enum: [SUPERFAST, EXPRESS, MAIL, RAJDHANI, SHATABDI]
-          example: SUPERFAST
-        source_departure:
-          type: string
-          example: "20:00:00"
-        dest_arrival:
-          type: string
-          example: "04:30:00"
-        distance_km:
-          type: integer
-          example: 360
-        journey_date:
-          type: string
-          format: date
-          example: "2026-11-05"
-        availability:
-          type: array
-          items:
-            type: object
-            properties:
-              class_code:
-                type: string
-                example: "3A"
-              class_name:
-                type: string
-                example: AC 3 Tier
-              general_available:
-                type: integer
-                example: 42
-              tatkal_available:
-                type: integer
-                example: 12
-              base_fare:
-                type: number
-                format: float
-                example: 680.00
-              tatkal_fare:
-                type: number
-                format: float
-                example: 880.00
-
-    PassengerInput:
-      type: object
+          enum:
+          - CUSTOMER
+          default: CUSTOMER
       required:
-        - name
-        - dob
-        - gender
-        - id_proof_type
-        - id_proof_no
+      - first_name
+      - last_name
+      - email
+      - phone
+      - password
+    RefreshRequest:
+      type: object
       properties:
-        name:
+        refresh:
           type: string
-          example: Ramesh Kumar
+      required:
+      - refresh
+    Passenger:
+      type: object
+      properties:
+        passenger_name:
+          type: string
+          maxLength: 100
+        age:
+          type: integer
+          minimum: 1
+          maximum: 120
         dob:
           type: string
           format: date
-          example: "1995-04-12"
         gender:
           type: string
-          enum: [MALE, FEMALE, OTHER]
-          example: MALE
-        id_proof_type:
+          enum:
+          - MALE
+          - FEMALE
+          - OTHER
+        id_card_type:
           type: string
-          enum: [AADHAAR, PAN, PASSPORT, VOTER_ID]
-          example: AADHAAR
-        id_proof_no:
+          enum:
+          - AADHAAR
+          - PAN
+          - PASSPORT
+          - VOTER_ID
+        id_card_number:
           type: string
-          example: "1234-5678-9012"
-
-    BookingCreateRequest:
-      type: object
+          maxLength: 50
       required:
-        - run_id
-        - class_code
-        - source_station_id
-        - dest_station_id
-        - booking_type
-        - passengers
+      - passenger_name
+      - gender
+      - id_card_type
+      - id_card_number
+      anyOf:
+      - required:
+        - age
+      - required:
+        - dob
+    PaymentRequest:
+      type: object
+      properties:
+        pnr:
+          type: integer
+          minimum: 1
+        payment_method:
+          type: string
+          enum:
+          - UPI
+          - CARD
+          - NETBANKING
+          - CREDIT_CARD
+          - DEBIT_CARD
+          - NET_BANKING
+        idempotency_key:
+          type: string
+          maxLength: 128
+      required:
+      - pnr
+      - payment_method
+    RunRequest:
+      type: object
+      properties:
+        train_id:
+          type: integer
+          minimum: 1
+        journey_date:
+          type: string
+          format: date
+      required:
+      - train_id
+      - journey_date
+    CancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+      required: []
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+          required:
+          - code
+          - message
+      required:
+      - error
+    BookingRequest:
+      type: object
       properties:
         run_id:
           type: integer
-          example: 101
-        class_code:
-          type: string
-          example: "3A"
+          minimum: 1
         source_station_id:
           type: integer
-          example: 1
+          minimum: 1
         dest_station_id:
           type: integer
-          example: 5
+          minimum: 1
+        class_code:
+          type: string
+          maxLength: 10
         booking_type:
           type: string
-          enum: [GENERAL, TATKAL]
-          example: TATKAL
+          enum:
+          - GENERAL
+          - TATKAL
         passengers:
           type: array
+          minItems: 1
+          maxItems: 6
           items:
-            $ref: '#/components/schemas/PassengerInput'
-
-    BookingResponse:
-      type: object
-      properties:
-        pnr:
-          type: integer
-          example: 1000000042
-        status:
-          type: string
-          enum: [PENDING, CONFIRMED, CANCELLED, EXPIRED, FAILED]
-          example: PENDING
-        total_fare:
-          type: number
-          format: float
-          example: 1760.00
-        booking_time:
-          type: string
-          format: date-time
-        expires_at:
-          type: string
-          format: date-time
-        hold_seconds_remaining:
-          type: integer
-          example: 300
-        message:
-          type: string
-          example: Seats held successfully. Please complete payment within 5 minutes.
-
-    PaymentRequest:
-      type: object
+            $ref: '#/components/schemas/Passenger'
       required:
-        - amount
-        - method
-      properties:
-        amount:
-          type: number
-          format: float
-          example: 1760.00
-        method:
-          type: string
-          enum: [UPI, CARD, NETBANKING]
-          example: UPI
-
-    PaymentResponse:
-      type: object
-      properties:
-        payment_id:
-          type: integer
-          example: 501
-        pnr:
-          type: integer
-          example: 1000000042
-        txn_ref:
-          type: string
-          example: TXN_20261102_987123
-        status:
-          type: string
-          enum: [SUCCESS, FAILED, REFUNDED]
-          example: SUCCESS
-        booking_status:
-          type: string
-          example: CONFIRMED
-        message:
-          type: string
-          example: Payment confirmed. Ticket successfully booked!
-
+      - run_id
+      - source_station_id
+      - dest_station_id
+      - class_code
+      - passengers
 paths:
   /auth/register:
     post:
-      summary: Register a new customer account
+      summary: Create a customer account
+      responses:
+        '201':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [first_name, last_name, email, phone, password]
-              properties:
-                first_name: { type: string }
-                last_name: { type: string }
-                email: { type: string, format: email }
-                phone: { type: string }
-                password: { type: string }
-      responses:
-        201:
-          description: User registered successfully
-        422:
-          description: Validation error
-
+              $ref: '#/components/schemas/RegisterRequest'
   /auth/login:
     post:
-      summary: Authenticate user and receive JWT pair
+      summary: Log in and receive access/refresh tokens
+      responses:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [email, password]
-              properties:
-                email: { type: string, format: email }
-                password: { type: string }
+              $ref: '#/components/schemas/LoginRequest'
+  /auth/refresh:
+    post:
+      summary: Refresh a session for an active account
       responses:
-        200:
-          description: Authenticated successfully
-        401:
-          description: Invalid email or password
-
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
   /auth/me:
     get:
-      summary: Fetch current authenticated user profile
+      summary: Read the authenticated user
+      responses:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
       security:
-        - BearerAuth: []
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-
-  /stations:
+      - BearerAuth: []
+  /stations/:
     get:
-      summary: Autocomplete search for railway stations
-      parameters:
-        - in: query
-          name: q
-          schema: { type: string }
-          description: Station name or city search query
+      summary: Search station code/name/city with q
       responses:
-        200:
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Station'
-
-  /trains/search:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+  /trains/:
     get:
-      summary: Search trains between stations on a specific date
-      parameters:
-        - in: query
-          name: from
-          required: true
-          schema: { type: integer }
-        - in: query
-          name: to
-          required: true
-          schema: { type: integer }
-        - in: query
-          name: date
-          required: true
-          schema: { type: string, format: date }
+      summary: List active train catalog
       responses:
-        200:
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TrainSearchResult'
-
-  /trains/{id}:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+  /trains/search/:
     get:
-      summary: Retrieve complete train details and route stops
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
+      summary: Search source/dest station code or ID and run date
       responses:
-        200:
-          description: Train details with stops and running days
-
-  /runs/{run_id}/availability:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      parameters:
+      - name: source
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: dest
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+  /trains/{id}/:
     get:
-      summary: Retrieve class and quota availability for a run
-      parameters:
-        - in: path
-          name: run_id
-          required: true
-          schema: { type: integer }
+      summary: Read timetable, running days and coach count
       responses:
-        200:
-          description: Class-wise availability
-
-  /runs/{run_id}/seats:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+  /runs/{run_id}/seats/:
     get:
-      summary: Retrieve seat map layout for a train run
-      parameters:
-        - in: path
-          name: run_id
-          required: true
-          schema: { type: integer }
+      summary: Read coach seat map by class and quota
       responses:
-        200:
-          description: Coach and seat status map
-
-  /tatkal/status:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: class
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: quota
+        in: query
+        required: false
+        schema:
+          type: string
+  /tatkal/status/:
     get:
-      summary: Get Tatkal window status and countdown for a run and class
-      parameters:
-        - in: query
-          name: run_id
-          required: true
-          schema: { type: integer }
-        - in: query
-          name: class
-          required: true
-          schema: { type: string }
+      summary: Read opening status by run_id and class
       responses:
-        200:
-          description: Window status and seconds remaining
-
-  /bookings:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      parameters:
+      - name: run_id
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: class
+        in: query
+        required: false
+        schema:
+          type: string
+  /bookings/:
     post:
-      summary: Attempt to hold and book seats under concurrency control
+      summary: Atomically reserve seats for eight minutes
+      responses:
+        '201':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BookingCreateRequest'
+              $ref: '#/components/schemas/BookingRequest'
+  /bookings/my/:
+    get:
+      summary: List the authenticated user bookings
       responses:
-        201:
-          description: Seats held successfully (Pending Payment)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BookingResponse'
-        409:
-          description: Sold out / seats unavailable
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        423:
-          description: Tatkal window is not yet open
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        429:
-          description: Booking request throttled
-
-  /bookings/{pnr}/pay:
-    post:
-      summary: Simulate payment and confirm booking with Idempotency-Key
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
       security:
-        - BearerAuth: []
+      - BearerAuth: []
+  /bookings/{pnr}/:
+    get:
+      summary: Read owned booking or admin-accessible booking
+      responses:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      security:
+      - BearerAuth: []
       parameters:
-        - in: path
-          name: pnr
-          required: true
-          schema: { type: integer }
-        - in: header
-          name: Idempotency-Key
-          required: true
-          schema: { type: string }
+      - name: pnr
+        in: path
+        required: true
+        schema:
+          type: integer
+  /bookings/{pnr}/cancel/:
+    post:
+      summary: Cancel confirmed owned ticket or admin-accessible ticket
+      responses:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: pnr
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRequest'
+  /payments/confirm/:
+    post:
+      summary: Confirm a simulated payment with idempotency protection
+      responses:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Required here or in request body; if both supplied they must match.
+        schema:
+          type: string
+          maxLength: 128
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/PaymentRequest'
+  /search/trains/:
+    get:
+      summary: Semantic train search using q
       responses:
-        200:
-          description: Payment confirmed and ticket issued
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaymentResponse'
-        410:
-          description: Seat hold has expired
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /bookings/{pnr}/cancel:
-    post:
-      summary: Cancel booking and compute refund according to policy slabs
-      security:
-        - BearerAuth: []
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
       parameters:
-        - in: path
-          name: pnr
-          required: true
-          schema: { type: integer }
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: string
+  /search/faq/:
+    get:
+      summary: Semantic project-policy search using q and optional category
+      responses:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: string
+  /admin/revenue/:
+    get:
+      summary: 'ADMIN: revenue summary and per-run rows'
+      responses:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      security:
+      - BearerAuth: []
+  /admin/audit-logs/:
+    get:
+      summary: 'ADMIN: latest trigger logs; filter entity/action'
+      responses:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: entity
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: action
+        in: query
+        required: false
+        schema:
+          type: string
+  /admin/reports/{metric}/:
+    get:
+      summary: 'ADMIN: occupancy or tatkal-demand'
+      responses:
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: metric
+        in: path
+        required: true
+        schema:
+          type: string
+  /admin/runs/:
+    post:
+      summary: 'ADMIN: create a dated run and inventory'
+      responses:
+        '201':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
+      security:
+      - BearerAuth: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                reason: { type: string }
+              $ref: '#/components/schemas/RunRequest'
+  /admin/release-holds/:
+    post:
+      summary: 'ADMIN: run the expiry sweep'
       responses:
-        200:
-          description: Booking cancelled and refund processed
-
-  /bookings/mine:
-    get:
-      summary: List all bookings for the authenticated user
+        '200':
+          description: Success; see Markdown response contract
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Permission denied
+        '404':
+          description: Resource not found
+        '409':
+          description: Conflict or booking rejected
+        '429':
+          description: Request rate exceeded
       security:
-        - BearerAuth: []
-      responses:
-        200:
-          description: List of user bookings
-
-  /bookings/{pnr}:
-    get:
-      summary: Get details, ticket, and passengers for a specific booking
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: pnr
-          required: true
-          schema: { type: integer }
-      responses:
-        200:
-          description: Booking details
-
-  /search/trains:
-    get:
-      summary: Semantic vector search for trains via ChromaDB
-      parameters:
-        - in: query
-          name: q
-          required: true
-          schema: { type: string }
-        - in: query
-          name: train_type
-          schema: { type: string }
-      responses:
-        200:
-          description: Top matched trains ranked by cosine similarity
-
-  /search/faq:
-    get:
-      summary: Semantic vector search for Tatkal policies & FAQs via ChromaDB
-      parameters:
-        - in: query
-          name: q
-          required: true
-          schema: { type: string }
-        - in: query
-          name: category
-          schema: { type: string }
-      responses:
-        200:
-          description: Top matched FAQ chunks ranked by cosine similarity
-
-  /admin/reports/revenue:
-    get:
-      summary: Admin aggregate revenue report
-      security:
-        - BearerAuth: []
-      responses:
-        200:
-          description: Revenue per train/run
-
-  /admin/reports/occupancy:
-    get:
-      summary: Admin occupancy percentage report
-      security:
-        - BearerAuth: []
-      responses:
-        200:
-          description: Occupancy metrics
-
-  /admin/reports/tatkal-demand:
-    get:
-      summary: Admin Tatkal demand & surge metrics
-      security:
-        - BearerAuth: []
-      responses:
-        200:
-          description: Tatkal demand metrics
-
-  /admin/audit-log:
-    get:
-      summary: Read-only view of database trigger audit trail
-      security:
-        - BearerAuth: []
-      responses:
-        200:
-          description: Audit logs with JSON old/new diffs
+      - BearerAuth: []

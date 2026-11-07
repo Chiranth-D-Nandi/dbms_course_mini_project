@@ -23,8 +23,9 @@ PIP="./.venv/bin/pip"
 echo "--> Installing pinned backend dependencies..."
 $PIP install -r requirements.txt
 
+$PYTHON scripts/configure_env.py
 echo "--> Initializing database objects..."
-$PYTHON backend/manage.py init_db
+$PYTHON backend/manage.py init_db --if-empty
 
 echo "--> Seeding database..."
 $PYTHON scripts/seed.py
@@ -34,7 +35,7 @@ $PYTHON scripts/ingest_chroma.py
 
 echo "--> Building frontend..."
 cd frontend
-npm install
+npm ci --no-audit --no-fund
 npm run build
 cd ..
 

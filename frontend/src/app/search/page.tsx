@@ -43,7 +43,8 @@ function SearchContent() {
     setError(null);
     try {
       const data = await api.searchTrains(fromId, toId, journeyDate);
-      setTrains(data);
+      const cls = searchParams.get('class');
+      setTrains(cls && cls !== 'ALL' ? data.map(t => ({...t, availability: t.availability.filter(a => a.class_code === cls)})).filter(t => t.availability.length) : data);
     } catch (err: any) {
       setError(err?.error?.message || 'Failed to search trains for the specified route.');
       setTrains([]);
@@ -84,7 +85,8 @@ function SearchContent() {
       if (sortBy === 'departure') {
         return a.source_departure.localeCompare(b.source_departure);
       }
-      return 0;
+      if (sortBy === 'fare') return Math.min(...a.availability.map(c => c.base_fare)) - Math.min(...b.availability.map(c => c.base_fare));
+      return a.distance_km - b.distance_km;
     });
 
   return (

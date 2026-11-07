@@ -48,7 +48,7 @@ class BookTicketView(APIView):
             # Calculate approximate DOB from age if DOB not directly supplied
             age = p.get("age", 25)
             birth_year = date.today().year - age
-            dob_str = p.get("dob") or f"{birth_year}-01-01"
+            dob_str = str(p.get("dob") or f"{birth_year}-01-01")
 
             passengers_list.append({
                 "name": p["passenger_name"],
@@ -82,6 +82,13 @@ class BookTicketView(APIView):
                     cursor.execute("SELECT @p_pnr, @p_status, @p_message;")
                     out_row = cursor.fetchone()
                     pnr, booking_status, message = out_row
+
+                    if booking_status == "DEADLOCK_RETRY":
+                        retries += 1
+                        if retries >= MAX_DEADLOCK_RETRIES:
+                            return Response({"error": {"code": "HIGH_CONCURRENCY_DEADLOCK", "message": "Please retry in a moment."}}, status=503)
+                        time.sleep((BASE_BACKOFF_MS * 2 ** retries + random.randint(10, 50)) / 1000)
+                        continue
 
                     if booking_status != "PENDING" or not pnr:
                         return Response({

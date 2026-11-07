@@ -10,16 +10,19 @@ export default function HelpPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FaqChunk[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [error, setError] = useState('');
   const [category, setCategory] = useState<string>('ALL');
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    setLoading(true);
+    setLoading(true); setSearched(true); setError('');
     try {
       const data = await api.searchFaq(query, category === 'ALL' ? undefined : category);
       setResults(data);
-    } catch {
+    } catch (e: any) {
+      setError(e?.error?.message || 'Search is unavailable.');
       setResults([]);
     } finally {
       setLoading(false);
@@ -37,19 +40,19 @@ export default function HelpPage() {
       chunk_id: 'default-2',
       title: 'Cancellation and Refund Policy',
       category: 'CANCELLATION',
-      content: 'No refund is admissible on cancellation of confirmed Tatkal tickets. For General quota: 90% refund if cancelled > 48 hours prior to scheduled departure, 50% if cancelled between 12 and 48 hours, and 0% if cancelled within 12 hours.',
+      content: 'No refund is admissible on cancellation of confirmed Tatkal tickets. For General quota: 90% refund if cancelled > 48 hours prior to scheduled departure, 50% if cancelled between 12 and 48 hours, 25% between 4 and 12 hours, and 0% within 4 hours.',
     },
     {
       chunk_id: 'default-3',
       title: 'Valid Government ID Proofs',
       category: 'ID_PROOF',
-      content: 'At least one passenger on a Tatkal booking must carry an original government ID proof during the journey. Acceptable documents: Aadhaar Card, Passport, PAN Card, Voter Identity Card, or Driving License.',
+      content: 'At least one passenger on a Tatkal booking must carry an original government ID proof during the journey. Acceptable documents: Aadhaar Card, Passport, PAN Card, Voter Identity Card, excluding Driving License in this demo.',
     },
     {
       chunk_id: 'default-4',
-      title: '5-Minute Seat Hold & Auto-Release',
+      title: '8-Minute Seat Hold & Auto-Release',
       category: 'SEAT_HOLD',
-      content: 'When you initiate a reservation, seats are temporarily placed in HELD status for 300 seconds (5 minutes). A recurring background MySQL event (ev_release_expired_holds) sweeps every 30 seconds and releases held seats back to the inventory if payment is not completed.',
+      content: 'When you initiate a reservation, seats are temporarily placed in HELD status for 480 seconds (8 minutes). A recurring background MySQL event (ev_release_expired_holds) sweeps every 30 seconds and releases held seats back to the inventory if payment is not completed.',
     },
   ];
 
@@ -98,7 +101,7 @@ export default function HelpPage() {
         {/* Categories */}
         <div className="flex flex-wrap items-center gap-2 text-xs pt-1">
           <span className="font-semibold text-slate-500">Filter Topic:</span>
-          {['ALL', 'TATKAL_RULES', 'CANCELLATION', 'ID_PROOF', 'SEAT_HOLD'].map((cat) => (
+          {['ALL', 'Tatkal Rules', 'Cancellation & Refunds', 'Travel Policies', 'Booking & PNR', 'Payment & Security'].map((cat) => (
             <button
               key={cat}
               onClick={() => setCategory(cat)}
@@ -112,6 +115,8 @@ export default function HelpPage() {
         </div>
       </div>
 
+      {error && <p role="alert" className="text-red-700">{error}</p>}
+      {searched && !loading && !error && results.length === 0 && <p>No matching policies found. Try another topic or query.</p>}
       {/* Search Results or Default Policies */}
       <div className="space-y-4">
         <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
@@ -119,7 +124,7 @@ export default function HelpPage() {
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(results.length > 0 ? results : defaultPolicies).map((item, idx) => (
+          {(searched ? results : defaultPolicies).map((item, idx) => (
             <div
               key={idx}
               className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:border-indigo-300 transition space-y-2 flex flex-col justify-between"
@@ -141,7 +146,7 @@ export default function HelpPage() {
 
               <div className="pt-2 text-[10px] text-slate-400 border-t border-slate-100 flex items-center gap-1">
                 <FileText className="w-3 h-3" />
-                <span>Verified IRCTC & Railway Board PRS Policy</span>
+                <span>Project demonstration policy — consult official railway guidance for real travel</span>
               </div>
             </div>
           ))}

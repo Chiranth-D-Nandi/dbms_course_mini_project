@@ -25,7 +25,7 @@
 
 5. **Semantic Information Retrieval**:
    - Natural language train query resolution via ChromaDB cosine similarity.
-   - Policy and FAQ question answering across 35+ granular chunks.
+   - Policy and FAQ question answering across 14 granular chunks.
 
 6. **Administrative Analytics & Governance**:
    - Comprehensive revenue and occupancy reports via SQL view `v_admin_revenue`.

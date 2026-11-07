@@ -10,7 +10,7 @@ echo "======================================================================"
 PYTHON="./.venv/bin/python"
 
 echo "--> Running init_db..."
-$PYTHON backend/manage.py init_db
+$PYTHON backend/manage.py init_db --reset
 
 echo "--> Reseeding data..."
 $PYTHON scripts/seed.py

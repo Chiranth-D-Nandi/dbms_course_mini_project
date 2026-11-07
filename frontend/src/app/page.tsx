@@ -34,7 +34,7 @@ export default function HomePage() {
   // Search Form State
   const [sourceStation, setSourceStation] = useState<Station | null>(null);
   const [destStation, setDestStation] = useState<Station | null>(null);
-  const [quota, setQuota] = useState<'GENERAL' | 'TATKAL' | 'LADIES' | 'SENIOR_CITIZEN'>('GENERAL');
+  const [quota, setQuota] = useState<'GENERAL' | 'TATKAL'>('GENERAL');
   const [classCode, setClassCode] = useState<string>('ALL');
   const [date, setDate] = useState(() => {
     const d = new Date();
@@ -118,12 +118,29 @@ export default function HomePage() {
   };
 
   // Quick route picker
-  const handleSelectQuickRoute = (srcId: number, dstId: number) => {
-    router.push(`/search?from=${srcId}&to=${dstId}&date=${date}`);
+  const [lookupError, setLookupError] = useState('');
+  const handleSelectQuickRoute = async (source: string, dest: string) => {
+    setLookupError('');
+    try {
+      const [from, to] = await Promise.all([api.searchStations(source), api.searchStations(dest)]);
+      const a = from.find(s => s.station_code === source), b = to.find(s => s.station_code === dest);
+      if (!a || !b) throw new Error('Route stations are unavailable.');
+      router.push(`/search?from=${a.station_id}&to=${b.station_id}&date=${date}`);
+    } catch (e: any) {setLookupError(e?.error?.message || e.message);}
+  };
+  const lookupSchedule = async (query: string) => {
+    setLookupError('');
+    try {
+      const trains = await api.listTrains();
+      const match = trains.find(t => t.train_number === query.trim()) || trains.find(t => t.train_name.toLowerCase().includes(query.trim().toLowerCase()));
+      if (!query.trim() || !match) throw new Error('No matching train. Enter a train number or name from the catalog.');
+      router.push(`/trains/${match.train_id}`);
+    } catch (e: any) {setLookupError(e?.error?.message || e.message);}
   };
 
   return (
     <div className="space-y-12 pb-16">
+      {lookupError && <p role="alert" className="mx-auto max-w-5xl rounded border border-red-200 bg-red-50 p-4 text-red-700">{lookupError}</p>}
       {/* Official Railway Notice Ticker */}
       <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-900 font-medium">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -132,7 +149,7 @@ export default function HomePage() {
               <Zap className="w-3 h-3" /> Tatkal Advisory
             </span>
             <p className="truncate text-xs text-amber-950 font-semibold">
-              Tatkal window for AC Classes (1A, 2A, 3A, CC) opens at 10:00 AM daily • Non-AC (SL) opens at 11:00 AM • Seats held for 5 minutes during payment • Carry original Govt Photo ID.
+              Tatkal window for AC Classes (1A, 2A, 3A, CC) opens at 10:00 AM daily • Non-AC (SL) opens at 11:00 AM • Seats held for 8 minutes during payment • Carry original Govt Photo ID.
             </p>
           </div>
           <a
@@ -160,7 +177,7 @@ export default function HomePage() {
               Book Train Tickets &amp; Tatkal
             </h1>
             <p className="max-w-2xl mx-auto text-slate-300 text-xs sm:text-sm">
-              Official high-speed reservation engine with guaranteed single-seat allocation, 5-minute checkout hold, and instant cancellation refunds.
+              Course-project reservation engine with guaranteed single-seat allocation, 8-minute checkout hold, and simulated cancellation refunds.
             </p>
           </div>
 
@@ -171,7 +188,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('BOOK')}
-                className={`flex-1 py-3.5 px-4 text-center transition flex items-center justify-center gap-2 ${
+                className={`min-w-0 flex-1 py-3.5 px-2 sm:px-4 text-center transition flex items-center justify-center gap-2 ${
                   activeTab === 'BOOK'
                     ? 'bg-white text-[#0f2e5a] border-b-2 border-[#0f2e5a] shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -183,7 +200,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('PNR')}
-                className={`flex-1 py-3.5 px-4 text-center transition flex items-center justify-center gap-2 ${
+                className={`min-w-0 flex-1 py-3.5 px-2 sm:px-4 text-center transition flex items-center justify-center gap-2 ${
                   activeTab === 'PNR'
                     ? 'bg-white text-[#0f2e5a] border-b-2 border-[#0f2e5a] shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -195,7 +212,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('SCHEDULE')}
-                className={`flex-1 py-3.5 px-4 text-center transition flex items-center justify-center gap-2 ${
+                className={`min-w-0 flex-1 py-3.5 px-2 sm:px-4 text-center transition flex items-center justify-center gap-2 ${
                   activeTab === 'SCHEDULE'
                     ? 'bg-white text-[#0f2e5a] border-b-2 border-[#0f2e5a] shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -297,8 +314,6 @@ export default function HomePage() {
                       >
                         <option value="GENERAL">GENERAL QUOTA</option>
                         <option value="TATKAL">TATKAL QUOTA (Opens 10 AM)</option>
-                        <option value="LADIES">LADIES QUOTA</option>
-                        <option value="SENIOR_CITIZEN">LOWER BERTH / SR CITIZEN</option>
                       </select>
                     </div>
 
@@ -340,7 +355,7 @@ export default function HomePage() {
             {activeTab === 'PNR' && (
               <div className="p-6 space-y-4">
                 <p className="text-xs text-slate-600">
-                  Enter your 8-digit or 10-digit Passenger Name Record (PNR) number to inspect live booking confirmation, coach assignment, and seat berth numbers.
+                  Enter your 10-digit Passenger Name Record (PNR) number to inspect live booking confirmation, coach assignment, and seat berth numbers.
                 </p>
 
                 <form onSubmit={handlePnrLookup} className="flex flex-col sm:flex-row gap-3">
@@ -351,7 +366,7 @@ export default function HomePage() {
                       required
                       value={pnrInput}
                       onChange={(e) => setPnrInput(e.target.value)}
-                      placeholder="Enter 8-digit PNR Number (e.g. 10000001)"
+                      placeholder="Enter 10-digit PNR Number (e.g. 1000000000)"
                       className="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0f2e5a]"
                     />
                   </div>
@@ -471,9 +486,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (trainQuery.includes('12639')) router.push('/trains/1');
-                      else if (trainQuery.includes('12007')) router.push('/trains/2');
-                      else router.push('/search');
+                      lookupSchedule(trainQuery);
                     }}
                     className="py-2.5 px-6 bg-[#0f2e5a] hover:bg-blue-900 text-white font-bold text-sm rounded-lg transition shadow"
                   >
@@ -484,19 +497,19 @@ export default function HomePage() {
                 <div className="flex flex-wrap gap-2 text-xs pt-1">
                   <span className="text-slate-500 font-medium">Quick Links:</span>
                   <button
-                    onClick={() => router.push('/trains/1')}
+                    onClick={() => lookupSchedule('12658')}
                     className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-mono font-semibold"
                   >
-                    #12639 Brindavan Express
+                    #12658 Bengaluru Chennai Express
                   </button>
                   <button
-                    onClick={() => router.push('/trains/2')}
+                    onClick={() => lookupSchedule('12028')}
                     className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-mono font-semibold"
                   >
-                    #12007 Shatabdi Express
+                    #12028 Shatabdi Express
                   </button>
                   <button
-                    onClick={() => router.push('/trains/3')}
+                    onClick={() => lookupSchedule('12951')}
                     className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-mono font-semibold"
                   >
                     #12951 Mumbai Rajdhani
@@ -523,7 +536,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Corridor 1: SBC to MAS */}
           <div
-            onClick={() => handleSelectQuickRoute(1, 2)}
+            onClick={() => handleSelectQuickRoute('SBC', 'MAS')}
             className="group cursor-pointer bg-white border border-slate-200 hover:border-amber-400 rounded-xl p-4 shadow-xs hover:shadow-md transition flex flex-col justify-between"
           >
             <div>
@@ -550,7 +563,7 @@ export default function HomePage() {
 
           {/* Corridor 2: NDLS to BCT */}
           <div
-            onClick={() => handleSelectQuickRoute(3, 4)}
+            onClick={() => handleSelectQuickRoute('NDLS', 'MMCT')}
             className="group cursor-pointer bg-white border border-slate-200 hover:border-amber-400 rounded-xl p-4 shadow-xs hover:shadow-md transition flex flex-col justify-between"
           >
             <div>
@@ -577,7 +590,7 @@ export default function HomePage() {
 
           {/* Corridor 3: NDLS to HWH */}
           <div
-            onClick={() => handleSelectQuickRoute(3, 5)}
+            onClick={() => handleSelectQuickRoute('NDLS', 'HWH')}
             className="group cursor-pointer bg-white border border-slate-200 hover:border-amber-400 rounded-xl p-4 shadow-xs hover:shadow-md transition flex flex-col justify-between"
           >
             <div>
@@ -604,7 +617,7 @@ export default function HomePage() {
 
           {/* Corridor 4: SBC to HYB */}
           <div
-            onClick={() => handleSelectQuickRoute(1, 6)}
+            onClick={() => handleSelectQuickRoute('SBC', 'SC')}
             className="group cursor-pointer bg-white border border-slate-200 hover:border-amber-400 rounded-xl p-4 shadow-xs hover:shadow-md transition flex flex-col justify-between"
           >
             <div>
@@ -742,7 +755,7 @@ export default function HomePage() {
             </div>
             <h3 className="font-extrabold text-sm text-slate-900">Zero Double-Booking</h3>
             <p className="text-xs text-slate-600">
-              ACID stored procedures with row-level locks prevent any race condition, guaranteeing 1 passenger per berth.
+              Row locks and unique seat allocations protect each berth from concurrent active bookings.
             </p>
           </div>
 
@@ -750,9 +763,9 @@ export default function HomePage() {
             <div className="p-2.5 bg-amber-50 text-amber-700 rounded-lg w-fit">
               <Clock className="w-6 h-6" />
             </div>
-            <h3 className="font-extrabold text-sm text-slate-900">5-Minute Seat Hold</h3>
+            <h3 className="font-extrabold text-sm text-slate-900">8-Minute Seat Hold</h3>
             <p className="text-xs text-slate-600">
-              Your selected berth is exclusively reserved for 300 seconds while you complete payment simulation.
+              Your selected berth is exclusively reserved for 480 seconds while you complete payment simulation.
             </p>
           </div>
 
@@ -760,9 +773,9 @@ export default function HomePage() {
             <div className="p-2.5 bg-emerald-50 text-emerald-700 rounded-lg w-fit">
               <Zap className="w-6 h-6" />
             </div>
-            <h3 className="font-extrabold text-sm text-slate-900">Instant UPI Refunds</h3>
+            <h3 className="font-extrabold text-sm text-slate-900">Simulated Refunds</h3>
             <p className="text-xs text-slate-600">
-              Automated cancellation calculations refund up to 90% back to source accounts instantly.
+              Cancellation computes the demo refund and releases seats back to inventory.
             </p>
           </div>
 
@@ -770,9 +783,9 @@ export default function HomePage() {
             <div className="p-2.5 bg-purple-50 text-purple-700 rounded-lg w-fit">
               <Ticket className="w-6 h-6" />
             </div>
-            <h3 className="font-extrabold text-sm text-slate-900">Official E-Ticket Slip</h3>
+            <h3 className="font-extrabold text-sm text-slate-900">Printable E-Ticket</h3>
             <p className="text-xs text-slate-600">
-              Generate and print authentic Electronic Reservation Slips (ERS) with QR verification.
+              View and print passenger details, seat assignments and payment references.
             </p>
           </div>
         </div>

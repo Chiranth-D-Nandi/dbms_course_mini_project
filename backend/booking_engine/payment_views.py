@@ -18,13 +18,19 @@ class ConfirmPaymentView(APIView):
     permission_classes = [IsAuthenticatedCustom]
 
     def post(self, request):
-        serializer = PaymentConfirmRequestSerializer(data=request.data)
+        payload = request.data.copy()
+        payload["pnr"] = payload.get("pnr") or payload.get("booking_id")
+        header_key = request.headers.get("Idempotency-Key")
+        if header_key and payload.get("idempotency_key") and header_key != payload["idempotency_key"]:
+            return Response({"error": {"code": "KEY_MISMATCH", "message": "Header and body payment keys differ."}}, status=400)
+        payload["idempotency_key"] = header_key or payload.get("idempotency_key")
+        serializer = PaymentConfirmRequestSerializer(data=payload)
         if not serializer.is_valid():
             return Response({"error": {"code": "VALIDATION_ERROR", "message": "Invalid payment parameters", "details": serializer.errors}}, status=status.HTTP_400_BAD_REQUEST)
 
         data = serializer.validated_data
-        pnr = request.data.get("pnr") or request.data.get("booking_id")
-        idempotency_key = request.headers.get("Idempotency-Key") or data.get("idempotency_key")
+        pnr = data["pnr"]
+        idempotency_key = data["idempotency_key"]
         method = data.get("payment_method", "UPI")
 
         # Map UPI, CREDIT_CARD, etc. to schema ENUM: 'UPI', 'CARD', 'NETBANKING'
@@ -48,6 +54,8 @@ class ConfirmPaymentView(APIView):
                 return Response({"error": {"code": "BOOKING_NOT_FOUND", "message": f"PNR {pnr} not found."}}, status=status.HTTP_404_NOT_FOUND)
 
             total_fare = b_row[0]
+            if b_row[2] != request.user.user_id and request.user.role != "ADMIN":
+                return Response({"error": {"code": "FORBIDDEN", "message": "This booking belongs to another customer."}}, status=403)
             txn_ref = f"TXN-{uuid.uuid4().hex[:12].upper()}"
 
             # sp_confirm_payment(p_pnr, p_amount, p_method, p_txn_ref, p_idempotency_key, OUT p_status, OUT p_message)
@@ -79,12 +87,14 @@ class ConfirmPaymentView(APIView):
                 [idempotency_key]
             )
             pay_row = cursor.fetchone()
+            cursor.execute("SELECT status FROM booking WHERE pnr = %s", [pnr])
+            current_status = cursor.fetchone()[0]
 
             return Response({
                 "message": message or "Payment confirmed and ticket issued successfully.",
                 "booking": {
                     "pnr": str(pnr),
-                    "status": "CONFIRMED"
+                    "status": current_status
                 },
                 "payment": {
                     "payment_id": pay_row[0] if pay_row else None,

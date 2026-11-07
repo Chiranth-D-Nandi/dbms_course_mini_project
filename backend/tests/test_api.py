@@ -42,6 +42,17 @@ def test_station_search(api_client):
     assert "SBC" in codes
 
 
+def test_train_catalog_and_timetable(api_client):
+    catalog = api_client.get('/api/trains/')
+    assert catalog.status_code == 200
+    assert catalog.data
+    response = api_client.get(f"/api/trains/{catalog.data[0]['train_id']}/")
+    assert response.status_code == 200, response.data
+    assert response.data['running_days']
+    assert response.data['stops']
+    assert all(isinstance(stop['halt_duration_minutes'], int) for stop in response.data['stops'])
+
+
 def test_sp_search_trains_endpoint(api_client, sample_stations):
     today = date.today().isoformat()
     resp = api_client.get(f"/api/trains/search/?source=SBC&dest=MAS&date={today}&class=3A&quota=GENERAL")

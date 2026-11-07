@@ -13,7 +13,7 @@ export default function AdminTrainsPage() {
   useEffect(() => {
     // Search trains or fetch all
     api
-      .searchTrainsSemantic('train')
+      .listTrains()
       .then(setTrains)
       .catch(() => setTrains([]))
       .finally(() => setLoading(false));
@@ -34,7 +34,7 @@ export default function AdminTrainsPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-xl font-bold text-slate-900">Manage Rolling Stock & Train Profiles</h1>
-            <p className="text-xs text-slate-500">Add, view, and configure train routes and coaches</p>
+            <p className="text-xs text-slate-500">Browse train routes and coaches; schedule departures from Train Runs.</p>
           </div>
         </div>
 

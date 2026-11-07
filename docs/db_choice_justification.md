@@ -9,7 +9,7 @@ This document provides the technical justification and architectural rationale f
 
 Modern enterprise systems require distinct storage engines optimized for fundamentally different query patterns. A railway booking system encompasses two diametrically opposed computational workloads:
 
-1. **Transactional OLTP Engine**: Strict ACID properties, sub-millisecond row locks, zero tolerance for phantom reads or double-allocations, foreign key integrity, and financial accounting.
+1. **Transactional OLTP Engine**: Strict ACID properties, explicit row locks, zero tolerance for phantom reads or double-allocations, foreign key integrity, and financial accounting.
 2. **Cognitive Information Retrieval**: High-dimensional semantic search over unstructured train route descriptions, natural language station intents, and complex railway policy FAQs.
 
 ```
@@ -40,7 +40,7 @@ Modern enterprise systems require distinct storage engines optimized for fundame
 In a Tatkal rush scenario, thousands of users compete for fewer than 100 available berths. If two concurrent transactions read the same available berth and both book it, a catastrophic double-allocation occurs.
 - **Atomicity**: The booking procedure (`sp_book_tickets`) updates `run_seat`, generates a `booking` header, and inserts multiple `passenger` records within a single atomic transaction block. If any step fails, the entire transaction rolls back.
 - **Consistency**: Database-level `CHECK` constraints (e.g. `age BETWEEN 1 AND 120`, `halt_duration >= 0`), `FOREIGN KEY` cascades, and `UNIQUE` indexes ensure invalid states are rejected at the storage layer regardless of API logic.
-- **Isolation**: InnoDB’s `REPEATABLE READ` snapshot isolation combined with `SELECT ... FOR UPDATE SKIP LOCKED` guarantees that concurrent sessions never lock or overwrite the same seat.
+- **Isolation**: Django uses `READ COMMITTED`; the booking transaction adds `SELECT ... FOR UPDATE SKIP LOCKED` protects allocated inventory from concurrent active assignment.
 - **Durability**: InnoDB’s Write-Ahead Logging (WAL / `ib_logfile`) and doublewrite buffer ensure committed ticket transactions survive power failures and crashes.
 
 ### B. In-Database Stored Procedures for Sub-Millisecond Latency

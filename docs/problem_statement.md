@@ -24,7 +24,7 @@ During the opening minutes of the Tatkal booking window, ticketing infrastructur
 ## 3. Project Objectives
 This project constructs a production-grade, full-stack Tatkal reservation engine that mathematically guarantees:
 - **Zero Double-Bookings** under 500+ concurrent threads.
-- Sub-millisecond database-layer seat locking via `SELECT ... FOR UPDATE SKIP LOCKED`.
+- Database-layer seat locking via `SELECT ... FOR UPDATE SKIP LOCKED`.
 - Autonomous 8-minute hold expiration via recurring MySQL events.
 - Semantic vector discovery powered by an offline ChromaDB instance.
 - Complete separation of concerns across a modern Next.js 14 frontend and Django REST backend.

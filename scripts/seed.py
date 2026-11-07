@@ -9,6 +9,8 @@ import os
 import sys
 import datetime
 import hashlib
+import json
+import secrets
 from dotenv import load_dotenv
 import pymysql
 
@@ -25,12 +27,12 @@ MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "tatkal_db")
 def hash_pw(password: str) -> str:
     # Django PBKDF2 compatible format or standard SHA256 test hash
     # For DRF compatibility, we store a PBKDF2 SHA256 hashed string
-    salt = "tatkalprs2026"
+    salt = secrets.token_hex(16)
     h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100000)
     return f"pbkdf2_sha256$100000${salt}${h.hex()}"
 
 def main():
-    print("==> Connecting to MySQL database tatkal_db...")
+    print(f"==> Connecting to MySQL database {MYSQL_DATABASE}...")
     conn = pymysql.connect(
         host=MYSQL_HOST,
         port=MYSQL_PORT,
@@ -38,6 +40,7 @@ def main():
         password=MYSQL_ROOT_PASSWORD,
         database=MYSQL_DATABASE,
         autocommit=True,
+        init_command="SET time_zone = '+05:30'",
         cursorclass=pymysql.cursors.DictCursor
     )
     cur = conn.cursor()
@@ -397,69 +400,36 @@ def main():
         users
     )
 
-    print("==> Seeding Historical Bookings for Analytical Views & Reports...")
-    # Seed 5 sample confirmed bookings with payments and 1 cancellation
-    cur.execute("SELECT user_id FROM app_user WHERE email = 'chiranth@example.com'")
-    user1_id = cur.fetchone()["user_id"]
-    cur.execute("SELECT user_id FROM app_user WHERE email = 'jashruth@example.com'")
-    user2_id = cur.fetchone()["user_id"]
-
-    cur.execute("SELECT run_id FROM train_run LIMIT 1")
-    first_run_id = cur.fetchone()["run_id"]
-
-    sbc_id = st_map["SBC"]
-    mas_id = st_map["MAS"]
-
-    # Historical Booking 1: General Confirmed
-    cur.execute(
-        """
-        INSERT INTO booking (user_id, run_id, source_station_id, dest_station_id, class_code, booking_type, status, booking_time, expires_at, total_fare)
-        VALUES (%s, %s, %s, %s, '3A', 'GENERAL', 'CONFIRMED', NOW() - INTERVAL 2 DAY, NULL, 1360.00)
-        """,
-        (user1_id, first_run_id, sbc_id, mas_id)
-    )
-    pnr1 = cur.lastrowid
-    cur.execute(
-        """
-        INSERT INTO payment (pnr, amount, method, status, txn_ref, idempotency_key, created_at)
-        VALUES (%s, 1360.00, 'UPI', 'SUCCESS', 'TXN_SEED_HIST_001', 'IDEMP_SEED_001', NOW() - INTERVAL 2 DAY)
-        """,
-        (pnr1,)
-    )
-
-    # Historical Booking 2: Tatkal Confirmed
-    cur.execute(
-        """
-        INSERT INTO booking (user_id, run_id, source_station_id, dest_station_id, class_code, booking_type, status, booking_time, expires_at, total_fare)
-        VALUES (%s, %s, %s, %s, '3A', 'TATKAL', 'CONFIRMED', NOW() - INTERVAL 1 DAY, NULL, 1760.00)
-        """,
-        (user2_id, first_run_id, sbc_id, mas_id)
-    )
-    pnr2 = cur.lastrowid
-    cur.execute(
-        """
-        INSERT INTO payment (pnr, amount, method, status, txn_ref, idempotency_key, created_at)
-        VALUES (%s, 1760.00, 'CARD', 'SUCCESS', 'TXN_SEED_HIST_002', 'IDEMP_SEED_002', NOW() - INTERVAL 1 DAY)
-        """,
-        (pnr2,)
-    )
-
-    # Historical Booking 3: Cancelled
-    cur.execute(
-        """
-        INSERT INTO booking (user_id, run_id, source_station_id, dest_station_id, class_code, booking_type, status, booking_time, expires_at, total_fare)
-        VALUES (%s, %s, %s, %s, 'SL', 'GENERAL', 'CANCELLED', NOW() - INTERVAL 3 DAY, NULL, 480.00)
-        """,
-        (user1_id, first_run_id, sbc_id, mas_id)
-    )
-    pnr3 = cur.lastrowid
-    cur.execute(
-        """
-        INSERT INTO cancellation (pnr, cancelled_at, refund_amount, reason)
-        VALUES (%s, NOW() - INTERVAL 2 DAY, 432.00, 'Customer requested voluntary cancellation')
-        """,
-        (pnr3,)
-    )
+    print("==> Seeding consistent sample tickets through booking/payment procedures...")
+    cur.execute("SELECT user_id FROM app_user WHERE email='chiranth@example.com'")
+    user_id = cur.fetchone()["user_id"]
+    cur.execute("""SELECT tr.run_id, ts1.station_id AS src, ts2.station_id AS dst
+        FROM train_run tr JOIN train_stop ts1 ON ts1.train_id=tr.train_id AND ts1.stop_seq=1
+        JOIN train_stop ts2 ON ts2.train_id=tr.train_id AND ts2.stop_seq=2
+        WHERE tr.journey_date=CURDATE()+INTERVAL 3 DAY
+        AND EXISTS (SELECT 1 FROM coach c WHERE c.train_id=tr.train_id AND c.class_code='3A')
+        ORDER BY tr.run_id LIMIT 1""")
+    run = cur.fetchone()
+    for i in range(3):
+        key = f"seed-payment-{i}"
+        cur.execute("SELECT payment_id FROM payment WHERE idempotency_key=%s", [key])
+        if cur.fetchone():
+            continue
+        passengers = json.dumps([dict(name=f"Demo Passenger {i+1}", dob="1995-05-15", gender="MALE", id_proof_type="AADHAAR", id_proof_no=f"11112222333{i}")])
+        cur.execute("CALL sp_book_tickets(%s,%s,'3A',%s,%s,'GENERAL',%s,@pnr,@status,@message)", [user_id,run["run_id"],run["src"],run["dst"],passengers])
+        cur.execute("SELECT @pnr AS pnr, @status AS status, @message AS message")
+        result = cur.fetchone()
+        if result["status"] != "PENDING":
+            raise RuntimeError("Demo booking failed: " + str(result["message"]))
+        pnr = result["pnr"]
+        cur.execute("SELECT total_fare FROM booking WHERE pnr=%s", [pnr])
+        fare = cur.fetchone()["total_fare"]
+        cur.execute("CALL sp_confirm_payment(%s,%s,'UPI',%s,%s,@status,@message)", [pnr,fare,f"TXN-SEED-{i}",key])
+        cur.execute("SELECT @status AS status")
+        if cur.fetchone()["status"] != "SUCCESS":
+            raise RuntimeError("Demo payment failed")
+        if i == 2:
+            cur.execute("CALL sp_cancel_booking(%s,%s,'Demo cancellation',@status,@refund,@message)",[pnr,user_id])
 
     cur.close()
     conn.close()

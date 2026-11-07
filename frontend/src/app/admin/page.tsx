@@ -15,6 +15,7 @@ export default function AdminDashboardPage() {
   const [occupancyData, setOccupancyData] = useState<any[]>([]);
   const [demandData, setDemandData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const cur = api.getCurrentUser();
@@ -25,15 +26,14 @@ export default function AdminDashboardPage() {
     setUser(cur);
 
     Promise.all([
-      api.getAdminRevenue().catch(() => []),
-      api.getAdminOccupancy().catch(() => []),
-      api.getAdminTatkalDemand().catch(() => []),
+      api.getAdminRevenue(),
+      api.getAdminOccupancy(),
+      api.getAdminTatkalDemand(),
     ]).then(([rev, occ, dem]) => {
       setRevenueData(rev);
       setOccupancyData(occ);
       setDemandData(dem);
-      setLoading(false);
-    });
+    }).catch(e => setError(e?.error?.message || 'Unable to load reports.')).finally(() => setLoading(false));
   }, [router]);
 
   if (loading) {
@@ -51,6 +51,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
       {/* Admin Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-200 pb-5">
         <div>
@@ -119,7 +120,7 @@ export default function AdminDashboardPage() {
             <TrendingUp className="w-4 h-4 text-red-600" />
           </div>
           <div className="text-2xl font-mono font-bold text-red-600">
-            {demandData.length > 0 ? demandData[0]?.tatkal_bookings || 14 : 14}
+            {demandData[0]?.tatkal_bookings ?? 0}
           </div>
           <p className="text-[11px] text-slate-500">Reservations under 30% Tatkal premium</p>
         </div>
@@ -163,10 +164,10 @@ export default function AdminDashboardPage() {
                     <td className="py-2.5 font-mono">{row.confirmed_bookings || 0}</td>
                     <td className="py-2.5 font-mono text-red-600">{row.cancellations || 0}</td>
                     <td className="py-2.5 font-mono">
-                      <span className="font-bold text-emerald-700">{row.occupancy_pct || 85}%</span>
+                      <span className="font-bold text-emerald-700">{row.occupancy_pct ?? 0}%</span>
                     </td>
                     <td className="py-2.5 font-mono font-bold text-right text-slate-900">
-                      ₹{Number(row.total_revenue || 0).toLocaleString()}
+                      ₹{Number(row.net_revenue || 0).toLocaleString()}
                     </td>
                   </tr>
                 ))

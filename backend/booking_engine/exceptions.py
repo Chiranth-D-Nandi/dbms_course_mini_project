@@ -14,6 +14,7 @@ Ensures all errors return an envelope matching the OpenAPI specification:
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
+import logging
 
 def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
@@ -29,11 +30,12 @@ def custom_exception_handler(exc, context):
         response.data = customized_data
         return response
 
+    logging.getLogger(__name__).error("Unhandled API error", exc_info=exc)
     return Response(
         {
             "error": {
                 "code": "INTERNAL_SERVER_ERROR",
-                "message": str(exc),
+                "message": "The server could not complete this request.",
                 "details": {},
             }
         },

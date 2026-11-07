@@ -56,7 +56,8 @@ class Train(models.Model):
 
 
 class TrainRunningDay(models.Model):
-    train = models.ForeignKey(Train, on_delete=models.DO_NOTHING, db_column="train_id", primary_key=True)
+    pk = models.CompositePrimaryKey("train_id", "day_of_week")
+    train = models.ForeignKey(Train, on_delete=models.DO_NOTHING, db_column="train_id")
     day_of_week = models.IntegerField()
 
     class Meta:
@@ -66,7 +67,8 @@ class TrainRunningDay(models.Model):
 
 
 class TrainStop(models.Model):
-    train = models.ForeignKey(Train, on_delete=models.DO_NOTHING, db_column="train_id", primary_key=True)
+    pk = models.CompositePrimaryKey("train_id", "stop_seq")
+    train = models.ForeignKey(Train, on_delete=models.DO_NOTHING, db_column="train_id")
     stop_seq = models.IntegerField()
     station = models.ForeignKey(Station, on_delete=models.DO_NOTHING, db_column="station_id")
     arrival_time = models.TimeField(null=True, blank=True)
@@ -154,7 +156,8 @@ class Booking(models.Model):
 
 
 class RunSeat(models.Model):
-    run = models.ForeignKey(TrainRun, on_delete=models.DO_NOTHING, db_column="run_id", primary_key=True)
+    pk = models.CompositePrimaryKey("run_id", "seat_id")
+    run = models.ForeignKey(TrainRun, on_delete=models.DO_NOTHING, db_column="run_id")
     seat = models.ForeignKey(Seat, on_delete=models.DO_NOTHING, db_column="seat_id")
     quota_type = models.CharField(max_length=10, default="GENERAL")
     seat_status = models.CharField(max_length=20, default="AVAILABLE")
@@ -169,7 +172,8 @@ class RunSeat(models.Model):
 
 
 class Passenger(models.Model):
-    pnr = models.ForeignKey(Booking, on_delete=models.DO_NOTHING, db_column="pnr", primary_key=True)
+    pk = models.CompositePrimaryKey("pnr_id", "passenger_seq")
+    pnr = models.ForeignKey(Booking, on_delete=models.DO_NOTHING, db_column="pnr")
     passenger_seq = models.IntegerField()
     name = models.CharField(max_length=100)
     dob = models.DateField()
@@ -230,12 +234,12 @@ class AuditLog(models.Model):
 
 # Relational Views (Read-Only)
 class VPassengerAge(models.Model):
-    passenger_id = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey("pnr", "passenger_seq")
     pnr = models.BigIntegerField()
     passenger_seq = models.IntegerField()
     name = models.CharField(max_length=100)
     dob = models.DateField()
-    current_age = models.IntegerField()
+    current_age = models.IntegerField(db_column="age")
     gender = models.CharField(max_length=10)
     fare_amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20)
@@ -246,7 +250,8 @@ class VPassengerAge(models.Model):
 
 
 class VTrainRoute(models.Model):
-    train_id = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey("train_id", "stop_seq")
+    train_id = models.IntegerField()
     train_number = models.CharField(max_length=10)
     train_name = models.CharField(max_length=100)
     train_type = models.CharField(max_length=20)
@@ -267,7 +272,8 @@ class VTrainRoute(models.Model):
 
 
 class VRunAvailability(models.Model):
-    run_id = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey("run_id", "class_code", "quota_type")
+    run_id = models.IntegerField()
     train_id = models.IntegerField()
     train_number = models.CharField(max_length=10)
     train_name = models.CharField(max_length=100)
@@ -275,7 +281,7 @@ class VRunAvailability(models.Model):
     class_code = models.CharField(max_length=10)
     class_name = models.CharField(max_length=50)
     quota_type = models.CharField(max_length=10)
-    total_capacity = models.IntegerField()
+    total_capacity = models.IntegerField(db_column="total_quota_seats")
     available_seats = models.IntegerField()
     held_seats = models.IntegerField()
     booked_seats = models.IntegerField()
@@ -300,7 +306,7 @@ class VBookingSummary(models.Model):
     status = models.CharField(max_length=20)
     total_fare = models.DecimalField(max_digits=10, decimal_places=2)
     booking_time = models.DateTimeField()
-    passenger_count = models.IntegerField()
+    passenger_count = models.IntegerField(db_column="passengers_count")
 
     class Meta:
         db_table = "v_booking_summary"
@@ -308,15 +314,17 @@ class VBookingSummary(models.Model):
 
 
 class VAdminRevenue(models.Model):
-    journey_date = models.DateField(primary_key=True)
+    run_id = models.IntegerField(primary_key=True)
+    train_id = models.IntegerField()
+    journey_date = models.DateField()
     train_number = models.CharField(max_length=10)
     train_name = models.CharField(max_length=100)
-    class_code = models.CharField(max_length=10)
-    total_confirmed_tickets = models.IntegerField()
-    gross_revenue = models.DecimalField(max_digits=12, decimal_places=2)
-    total_cancellations = models.IntegerField()
-    total_refunded = models.DecimalField(max_digits=12, decimal_places=2)
+    total_confirmed_tickets = models.IntegerField(db_column="confirmed_bookings")
+    gross_revenue = models.DecimalField(max_digits=12, decimal_places=2, db_column="total_revenue")
+    total_cancellations = models.IntegerField(db_column="cancellations")
+    total_refunded = models.DecimalField(max_digits=12, decimal_places=2, db_column="total_refunds")
     net_revenue = models.DecimalField(max_digits=12, decimal_places=2)
+    occupancy_pct = models.DecimalField(max_digits=6, decimal_places=1)
 
     class Meta:
         db_table = "v_admin_revenue"

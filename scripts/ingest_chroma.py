@@ -17,10 +17,13 @@ from pathlib import Path
 import chromadb
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
+from dotenv import load_dotenv
+import pymysql
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-MODELS_DIR = REPO_ROOT / "models" / "all-MiniLM-L6-v2"
-CHROMA_DIR = REPO_ROOT / "chroma_data"
+load_dotenv(REPO_ROOT / ".env")
+MODELS_DIR = REPO_ROOT / os.getenv("SENTENCE_TRANSFORMER_MODEL_PATH", "models/all-MiniLM-L6-v2")
+CHROMA_DIR = REPO_ROOT / os.getenv("CHROMA_PERSIST_DIRECTORY", "chroma_data")
 
 TRAIN_DATA = [
     {
@@ -175,128 +178,48 @@ TRAIN_DATA = [
     }
 ]
 
+# These are the implemented course-project policies, not official travel guidance.
 POLICY_FAQ_DATA = [
-    {
-        "id": "tatkal_timing_ac",
-        "title": "Tatkal Booking Opening Time for AC Classes",
-        "category": "Tatkal Rules",
-        "document": "Tatkal booking window opens at 10:00 AM IST on the day prior to the train journey date for all Air-Conditioned (AC) classes including AC First Class (1A), AC 2-Tier (2A), AC 3-Tier (3A), AC 3 Economy (3E), Executive Chair Car (EC), and AC Chair Car (CC). Online booking requires rapid submission due to heavy concurrency."
-    },
-    {
-        "id": "tatkal_timing_non_ac",
-        "title": "Tatkal Booking Opening Time for Non-AC Classes",
-        "category": "Tatkal Rules",
-        "document": "Tatkal booking window opens at 11:00 AM IST on the day prior to the train journey date for Non-AC classes including Sleeper Class (SL) and Second Sitting (2S). Travel dates are calculated from the train's originating station."
-    },
-    {
-        "id": "tatkal_charges_slab",
-        "title": "Tatkal Surcharge and Pricing Formula",
-        "category": "Tatkal Rules",
-        "document": "Tatkal charges are pegged at a percentage of the base fare: 10% of base fare for Sleeper class and 30% of base fare for all AC classes, subject to statutory minimum and maximum limits. For Sleeper: Min Rs 100, Max Rs 200. For AC 3 Tier: Min Rs 300, Max Rs 400. For AC 2 Tier and 1A: Min Rs 400, Max Rs 500. This Tatkal fee is added per passenger to the base fare and GST."
-    },
-    {
-        "id": "tatkal_passenger_limit",
-        "title": "Maximum Passengers on Tatkal Booking",
-        "category": "Tatkal Rules",
-        "document": "A maximum of four (4) passengers can be booked per PNR ticket under Tatkal quota on IRCTC web and PRS counters. Only confirmed or waitlisted tickets are issued; no RAC (Reservation Against Cancellation) is permitted under Tatkal quota in most train types."
-    },
-    {
-        "id": "tatkal_cancellation_refund",
-        "title": "Refund on Cancellation of Confirmed Tatkal Ticket",
-        "category": "Cancellation & Refunds",
-        "document": "No refund of fare is granted on cancellation of confirmed Tatkal tickets. If a confirmed Tatkal ticket is cancelled by the passenger, zero refund (0%) is issued, and the entire fare is forfeited as cancellation charge. Full refund is only permissible if the train is cancelled by railways or delayed by more than 3 hours at originating station."
-    },
-    {
-        "id": "contingent_tatkal_refund",
-        "title": "Full Refund Conditions for Tatkal Tickets",
-        "category": "Cancellation & Refunds",
-        "document": "A 100% full refund on Tatkal tickets is granted only in the following railway-fault scenarios: (1) If the train is delayed by more than 3 hours at passenger's boarding station and passenger chooses not to travel; (2) If train route is diverted and passenger does not want to travel via diverted route; (3) If train is completely cancelled by Railways; (4) If passenger is accommodated in a lower class coach and declines the downgrade."
-    },
-    {
-        "id": "general_cancellation_slab_48h",
-        "title": "Cancellation Fee More than 48 Hours Before Departure",
-        "category": "Cancellation & Refunds",
-        "document": "If a confirmed ticket is cancelled more than 48 hours before scheduled departure of the train, flat cancellation clerkage charges apply per passenger: Rs 240 for AC First Class / Executive Class; Rs 200 for AC 2-Tier / First Class; Rs 180 for AC 3-Tier / AC Chair Car / 3 Economy; Rs 120 for Sleeper Class; and Rs 60 for Second Class (2S)."
-    },
-    {
-        "id": "general_cancellation_slab_12h_48h",
-        "title": "Cancellation Fee Between 48 Hours and 12 Hours",
-        "category": "Cancellation & Refunds",
-        "document": "If a confirmed ticket is cancelled between 48 hours and up to 12 hours before the scheduled train departure, the cancellation fee is 25% of the fare subject to the minimum flat clerkage charge for the respective travel class. The remaining 75% of fare is credited back to the original payment source."
-    },
-    {
-        "id": "general_cancellation_slab_4h_12h",
-        "title": "Cancellation Fee Between 12 Hours and 4 Hours",
-        "category": "Cancellation & Refunds",
-        "document": "If a confirmed ticket is cancelled between 12 hours and up to 4 hours before the scheduled departure of the train (or before chart preparation, whichever is earlier), 50% of the total ticket fare is deducted as cancellation charge. Remaining 50% is refunded."
-    },
-    {
-        "id": "general_cancellation_after_chart",
-        "title": "Cancellation After Chart Preparation / Less than 4 Hours",
-        "category": "Cancellation & Refunds",
-        "document": "No refund is admissible on confirmed tickets if cancelled less than 4 hours before scheduled departure or after chart preparation. In such cases, passengers must file an online Ticket Deposit Receipt (TDR) claiming refund under specific exceptional grounds (e.g. AC failure, medical emergency) within prescribed time limits."
-    },
-    {
-        "id": "id_proof_requirements",
-        "title": "Mandatory ID Proof for Train Travel",
-        "category": "Travel Policies",
-        "document": "At least one passenger on a PNR must produce an original, valid government-issued photo identity proof during train journey to the Ticket Examiner (TTE). Authorized ID proofs include: Aadhaar Card (physical or m-Aadhaar), Voter Identity Card, Passport, Driving License, PAN Card, Central/State Govt Employee Photo ID, Nationalized Bank Passbook with photo, and Student Photo ID card issued by recognized institutions."
-    },
-    {
-        "id": "pnr_status_codes",
-        "title": "Understanding PNR Status Codes (CNF, RAC, WL, CAN)",
-        "category": "Booking & PNR",
-        "document": "PNR (Passenger Name Record) statuses: CNF / CONFIRMED means passenger has an allocated coach and seat/berth. RAC (Reservation Against Cancellation) means passenger has guaranteed boarding permission and shares a side-lower berth with another RAC passenger; seat may get upgraded to full berth upon chart preparation. WL (Waitlist) means passenger is not permitted to board reserved coaches; if unconfirmed after chart preparation, online e-ticket auto-cancels with full refund. CAN means ticket has been cancelled."
-    },
-    {
-        "id": "seat_hold_reservation",
-        "title": "Seat Hold Mechanism and Expiry Window",
-        "category": "Booking & PNR",
-        "document": "During high-concurrency booking, the PRS engine places selected seats into a temporary 'HOLD' state for exactly 8 minutes (480 seconds). This lock guarantees that no other concurrent customer can steal the allocated seat while the passenger completes online payment. If payment confirmation is not received within 8 minutes, the hold expires automatically, and the seats are released back to the general inventory pool."
-    },
-    {
-        "id": "payment_idempotency_security",
-        "title": "Payment Idempotency and Duplicate Charge Protection",
-        "category": "Payment & Security",
-        "document": "All payment confirmation requests require a unique 'Idempotency-Key' HTTP header or parameter. If a network timeout, browser crash, or retry occurs, submitting the same idempotency key prevents double debiting and safely retrieves the existing confirmed transaction record without duplicate billing."
-    },
-    {
-        "id": "senior_citizen_concession",
-        "title": "Senior Citizen Concession Rules",
-        "category": "Travel Policies",
-        "document": "Indian Railways previously offered 40% concession for men aged 60+ and 50% concession for women aged 58+. Senior citizens travelling on reserved berths are automatically prioritized for lower berths during automated seat allocation in SL and 3A classes subject to availability."
-    },
-    {
-        "id": "luggage_allowance_limits",
-        "title": "Free Luggage Allowance and Excess Baggage",
-        "category": "Travel Policies",
-        "document": "Free luggage allowances per passenger: AC First Class: 70 kg free (marginal allowance 15 kg); AC 2-Tier: 50 kg free (marginal allowance 10 kg); AC 3-Tier and Chair Car: 40 kg free (marginal allowance 10 kg); Sleeper Class: 40 kg free (marginal allowance 10 kg). Luggage exceeding limits must be booked in advance in the brake van luggage compartment."
-    },
-    {
-        "id": "child_ticket_rules",
-        "title": "Child Fare and Seat Allocation Rules",
-        "category": "Travel Policies",
-        "document": "Children under 5 years of age travel free of charge without a separate berth. For children aged between 5 and 11 years, full adult fare is charged if a separate berth or seat is opted. If no separate berth is requested for children aged 5-11, half of the adult base fare is charged without seat allocation."
-    },
-    {
-        "id": "tatkal_opening_speed",
-        "title": "Tatkal Rush Hours and Concurrency Handling",
-        "category": "Tatkal Rules",
-        "document": "During the first 15 minutes of Tatkal opening (10:00 to 10:15 AM for AC and 11:00 to 11:15 AM for Non-AC), IRCTC PRS systems experience millions of requests per minute. The system employs row-level locks, skip locked queues, and memory-cached availability to prevent race conditions and eliminate double bookings."
-    },
-    {
-        "id": "berth_types_explanation",
-        "title": "Berth Types in Indian Railway Coaches",
-        "category": "Travel Policies",
-        "document": "Indian railway sleeper and AC coaches contain specific berth configurations: Lower Berth (LB) on the floor level; Middle Berth (MB) folded up during daytime; Upper Berth (UB) at the top; Side Lower (SL) along the corridor; Side Upper (SU) above the side lower; and Side Middle (SM) in select high-density 3E coaches. In daytime chair cars (CC/EC), seats are designated as Window (W), Middle (M), and Aisle (A)."
-    },
-    {
-        "id": "tdr_filing_procedure",
-        "title": "Ticket Deposit Receipt (TDR) Filing and Settlement",
-        "category": "Cancellation & Refunds",
-        "document": "A Ticket Deposit Receipt (TDR) can be filed online for tickets cancelled after chart preparation under recognized scenarios such as train diverted, AC failure in coach, passenger unable to travel due to late running train (>3 hours), or party partially confirmed. TDRs are verified by Chief Commercial Managers (CCM) and refunds are processed within 90 days."
-    }
+    {"id":"tatkal_ac", "title":"AC Tatkal opening", "category":"Tatkal Rules", "document":"In this demo, Tatkal booking opens at 10:00 AM Indian time one day before the train run date for AC classes 1A, 2A, 3A and CC. Seats are limited to the Tatkal quota."},
+    {"id":"tatkal_sl", "title":"Sleeper Tatkal opening", "category":"Tatkal Rules", "document":"In this demo, Non-AC Sleeper SL Tatkal booking opens at 11:00 AM Indian time one day before the train run date."},
+    {"id":"passenger_limits", "title":"Passengers per booking", "category":"Booking & PNR", "document":"A General ticket can contain one to six passengers. A Tatkal ticket can contain one to four passengers. Every passenger needs a name, date of birth or age, gender and supported ID details."},
+    {"id":"tatkal_refund", "title":"Confirmed Tatkal cancellation refund", "category":"Cancellation & Refunds", "document":"No refund is given when a customer cancels a confirmed Tatkal ticket in this project. Tatkal cancellation refund is zero percent. The fare is retained and booked seats are released."},
+    {"id":"general_refund", "title":"General cancellation refund tiers", "category":"Cancellation & Refunds", "document":"This demo refunds 90% for General tickets cancelled more than 48 hours before boarding departure, 50% at 12 to 48 hours, 25% at 4 to 12 hours and zero below 4 hours. This is a simplified project policy, not an official railway tariff."},
+    {"id":"seat_hold", "title":"Eight-minute seat hold and expiry", "category":"Booking & PNR", "document":"Reserved seats are held for eight minutes, or 480 seconds, while payment is pending. Payment after the deadline is rejected. A MySQL event sweeps expired holds every 30 seconds and releases their seats."},
+    {"id":"payment_demo", "title":"Simulated payment methods", "category":"Payment & Security", "document":"UPI, card and netbanking payments are simulated. No bank is connected and no real money is charged. Payment confirms the reserved ticket only when its hold has not expired."},
+    {"id":"payment_retry", "title":"Safe payment retries", "category":"Payment & Security", "document":"Payment confirmation requires an Idempotency-Key. Retrying the same booking and payment method with the same key returns the original payment. Reusing it for another booking is rejected."},
+    {"id":"ids", "title":"Accepted identification and age", "category":"Travel Policies", "document":"The demo accepts Aadhaar, PAN, passport and voter ID. Passengers must be aged one to 120. Identity numbers are entered for demonstration and are visible only to the booking owner or an administrator."},
+    {"id":"pnr", "title":"PNR and ticket states", "category":"Booking & PNR", "document":"A PNR is a ten-digit booking number. Tickets progress from PENDING seat hold to CONFIRMED after payment, or EXPIRED after timeout. A confirmed ticket can become CANCELLED. My Bookings shows your reservation history."},
+    {"id":"security", "title":"Accounts and authorization", "category":"Payment & Security", "document":"Public registration creates customer accounts. Administrators are provisioned through trusted setup. Customers can view, pay and cancel their own tickets. Passwords are salted and hashed and API sessions use signed access and refresh tokens."},
+    {"id":"fares", "title":"Distance fares and Tatkal surcharge", "category":"Tatkal Rules", "document":"The database computes fare from route distance and class rate per kilometre. Tatkal adds a class-specific percentage surcharge clamped to the minimum and maximum stored in seat_class. No real payment or tax settlement is performed."},
+    {"id":"allocation", "title":"Seat allocation and availability", "category":"Booking & PNR", "document":"Seats are assigned automatically by coach and seat order. The displayed seat map is informational. Row locks and a unique passenger-seat constraint prevent simultaneous active allocations. This project does not provide waitlists or partial-route seat reuse."},
+    {"id":"schedule", "title":"Journey dates and schedules", "category":"Travel Policies", "document":"Search uses the train run date at its originating station. Timetables include intermediate stops, distances and day offsets for overnight travel. Booking is rejected after boarding departure or if the run is unavailable."},
 ]
+
+
+def train_catalog():
+    curated = {t["train_number"]: t["document"] for t in TRAIN_DATA}
+    conn = pymysql.connect(host=os.getenv("MYSQL_HOST", "127.0.0.1"), port=int(os.getenv("MYSQL_PORT", "3306")),
+        user=os.getenv("DB_APP_RO_USER", "app_ro"), password=os.getenv("DB_APP_RO_PASSWORD", "TatkalRo_SecurePass#2026"),
+        database=os.getenv("MYSQL_DATABASE", "tatkal_db"), cursorclass=pymysql.cursors.DictCursor)
+    catalog = []
+    try:
+        with conn.cursor() as c:
+            c.execute("SELECT train_id,train_number,train_name,train_type FROM train WHERE is_active=TRUE ORDER BY train_number")
+            trains = c.fetchall()
+            for train in trains:
+                c.execute("SELECT s.station_code,s.station_name,s.city FROM train_stop ts JOIN station s ON s.station_id=ts.station_id WHERE ts.train_id=%s ORDER BY ts.stop_seq",[train["train_id"]])
+                stops = c.fetchall()
+                if not stops:
+                    continue
+                document = curated.get(train["train_number"], train["train_name"] + " is a " + train["train_type"] + " train.")
+                document += " Route: " + " to ".join(s["station_name"] + " (" + s["city"] + ")" for s in stops) + "."
+                meta = dict(train, source=stops[0]["station_code"], destination=stops[-1]["station_code"])
+                catalog.append({"id": train["train_number"], "document": document, "metadata": meta})
+    finally:
+        conn.close()
+    return catalog
+
 
 def main():
     print("=" * 70)
@@ -337,9 +260,10 @@ def main():
         metadata={"hnsw:space": "cosine", "description": "Semantic representations of trains and routes"}
     )
 
-    train_ids = [t["id"] for t in TRAIN_DATA]
-    train_docs = [t["document"] for t in TRAIN_DATA]
-    train_metas = [t["metadata"] for t in TRAIN_DATA]
+    catalog = train_catalog()
+    train_ids = [t["id"] for t in catalog]
+    train_docs = [t["document"] for t in catalog]
+    train_metas = [t["metadata"] for t in catalog]
 
     print(f"  --> Computing embeddings for {len(train_docs)} trains...")
     train_embeddings = model.encode(train_docs).tolist()

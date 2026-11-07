@@ -1,122 +1,79 @@
-# Owner: Person A
-"""
-Django Management Command: init_db
-Executes RAW SQL files in order from the db/ directory to provision:
-00_reset.sql, 01_schema.sql, 02_alter_demo.sql, 03_procedures.sql,
-04_triggers.sql, 05_views.sql, and 06_events.sql.
-"""
-
+"""Provision a selected database; resetting existing tables requires --reset."""
 import os
-import subprocess
-import shutil
+import re
 from pathlib import Path
-from django.core.management.base import BaseCommand
 import pymysql
+from django.core.management.base import BaseCommand, CommandError
+
+
+def statements(content):
+    delimiter = ";"
+    pending = []
+    for line in content.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("--"):
+            continue
+        if stripped.upper().startswith("DELIMITER "):
+            delimiter = stripped.split()[1]
+            continue
+        line = re.sub(r";\s*--.*$", ";", line)
+        pending.append(line)
+        if line.rstrip().endswith(delimiter):
+            yield "\n".join(pending).rstrip()[:-len(delimiter)]
+            pending = []
+    if pending:
+        yield "\n".join(pending)
+
 
 class Command(BaseCommand):
-    help = "Initializes MySQL database objects by running raw SQL scripts in db/ sequentially."
+    help = "Initialize MYSQL_DATABASE without touching any other database."
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "--skip-reset",
-            action="store_true",
-            help="Skip running 00_reset.sql",
-        )
+        parser.add_argument("--reset", action="store_true", help="Explicitly replace existing project tables and data.")
+        parser.add_argument("--skip-reset", action="store_true", help="Compatibility flag: refuses existing project tables.")
+        parser.add_argument("--if-empty", action="store_true", help="Keep existing tables and return successfully.")
+        parser.add_argument("--update-objects", action="store_true", help="Refresh routines, triggers, views and events without changing table data.")
 
     def handle(self, *args, **options):
-        base_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
-        db_dir = base_dir / "db"
-
-        sql_files = [
-            "00_reset.sql",
-            "01_schema.sql",
-            "02_alter_demo.sql",
-            "03_procedures.sql",
-            "04_triggers.sql",
-            "05_views.sql",
-            "06_events.sql",
-        ]
-
-        if options["skip_reset"]:
-            sql_files = sql_files[1:]
-
-        mysql_host = os.getenv("MYSQL_HOST", "127.0.0.1")
-        mysql_port = os.getenv("MYSQL_PORT", "3306")
-        root_user = os.getenv("MYSQL_ROOT_USER", "root")
-        root_password = os.getenv("MYSQL_ROOT_PASSWORD", "Chiranth@SQL")
         database = os.getenv("MYSQL_DATABASE", "tatkal_db")
-
-        mysql_bin = shutil.which("mysql")
-
-        self.stdout.write(self.style.NOTICE("==> Starting database initialization..."))
-
-        for sql_file in sql_files:
-            file_path = db_dir / sql_file
-            if not file_path.exists():
-                self.stderr.write(self.style.ERROR(f"File not found: {file_path}"))
-                continue
-
-            self.stdout.write(self.style.NOTICE(f"--> Executing {sql_file}..."))
-
-            if mysql_bin:
-                # Use mysql CLI to natively handle DELIMITER and multi-statement SQL
-                cmd = [
-                    mysql_bin,
-                    "-h", mysql_host,
-                    "-P", mysql_port,
-                    "-u", root_user,
-                    f"-p{root_password}",
-                    "--default-character-set=utf8mb4",
-                ]
-                if sql_file != "00_reset.sql":
-                    cmd.append(database)
-
-                with open(file_path, "r", encoding="utf-8") as f:
-                    result = subprocess.run(cmd, stdin=f, capture_output=True, text=True)
-
-                if result.returncode != 0:
-                    self.stderr.write(self.style.ERROR(f"Error in {sql_file}: {result.stderr}"))
-                    raise Exception(f"Failed to execute {sql_file}: {result.stderr}")
-                else:
-                    self.stdout.write(self.style.SUCCESS(f"  [OK] Successfully executed {sql_file}"))
-            else:
-                # Fallback pymysql runner
-                conn = pymysql.connect(
-                    host=mysql_host,
-                    port=int(mysql_port),
-                    user=root_user,
-                    password=root_password,
-                    database=None if sql_file == "00_reset.sql" else database,
-                    autocommit=True,
-                    client_flag=pymysql.constants.CLIENT.MULTI_STATEMENTS
-                )
-                with conn.cursor() as cur:
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        content = f.read()
-                    # Strip DELIMITER commands for pymysql
-                    statements = []
-                    current = []
-                    delimiter = ";"
-                    for line in content.splitlines():
-                        stripped = line.strip()
-                        if stripped.upper().startswith("DELIMITER"):
-                            delimiter = stripped.split()[1]
-                            continue
-                        if stripped.endswith(delimiter):
-                            current.append(stripped[:-len(delimiter)])
-                            stmt = "\n".join(current).strip()
-                            if stmt:
-                                statements.append(stmt)
-                            current = []
-                        else:
-                            current.append(line)
-                    if current and "\n".join(current).strip():
-                        statements.append("\n".join(current).strip())
-
-                    for stmt in statements:
-                        if stmt:
-                            cur.execute(stmt)
-                conn.close()
-                self.stdout.write(self.style.SUCCESS(f"  [OK] Successfully executed {sql_file}"))
-
-        self.stdout.write(self.style.SUCCESS("==> Database initialization completed successfully!"))
+        rw = os.getenv("DB_APP_RW_USER", "app_rw")
+        ro = os.getenv("DB_APP_RO_USER", "app_ro")
+        for value in (database, rw, ro):
+            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", value):
+                raise CommandError("Database and account names must contain only letters, numbers, and underscores.")
+        conn = pymysql.connect(host=os.getenv("MYSQL_HOST", "127.0.0.1"),
+            port=int(os.getenv("MYSQL_PORT", "3306")), user=os.getenv("MYSQL_ROOT_USER", "root"),
+            password=os.getenv("MYSQL_ROOT_PASSWORD", ""), autocommit=True, charset="utf8mb4", init_command="SET time_zone = '+05:30'")
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=%s AND table_type='BASE TABLE'", [database])
+                existing_tables = cur.fetchone()[0]
+                if options["update_objects"] and not existing_tables:
+                    raise CommandError("Initialize the empty database before updating objects.")
+                if existing_tables and not options["reset"] and not options["update_objects"]:
+                    if options["if_empty"]:
+                        self.stdout.write("Existing project schema preserved.")
+                        return
+                    raise CommandError("Database contains tables. Choose a new MYSQL_DATABASE or explicitly pass --reset to erase project data.")
+                root = Path(__file__).resolve().parents[4]
+                files = ("00_reset.sql", "01_schema.sql", "02_alter_demo.sql", "03_procedures.sql", "04_triggers.sql", "05_views.sql", "06_events.sql")
+                for name in (files[3:] if options["update_objects"] else files):
+                    content = (root / "db" / name).read_text(encoding="utf-8")
+                    content = content.replace("tatkal_db", database)
+                    content = content.replace("'app_rw'", "'" + rw + "'").replace("'app_ro'", "'" + ro + "'")
+                    content = content.replace("TatkalRw_SecurePass#2026", pymysql.converters.escape_string(os.getenv("DB_APP_RW_PASSWORD", "TatkalRw_SecurePass#2026")))
+                    content = content.replace("TatkalRo_SecurePass#2026", pymysql.converters.escape_string(os.getenv("DB_APP_RO_PASSWORD", "TatkalRo_SecurePass#2026")))
+                    for sql in statements(content):
+                        cur.execute(sql)
+                        while cur.nextset():
+                            pass
+                    self.stdout.write(self.style.SUCCESS("Applied " + name))
+                # Earlier installations granted the read-only account every routine.
+                # A DEFINER procedure could then write despite table-level SELECT-only access.
+                for host in ("localhost", "127.0.0.1"):
+                    cur.execute(f"SHOW GRANTS FOR '{ro}'@'{host}'")
+                    grants = [row[0] for row in cur.fetchall()]
+                    if any(f"ON `{database}`.*" in grant and "EXECUTE" in grant.split(" ON ")[0] for grant in grants):
+                        cur.execute(f"REVOKE EXECUTE ON `{database}`.* FROM '{ro}'@'{host}'")
+        finally:
+            conn.close()

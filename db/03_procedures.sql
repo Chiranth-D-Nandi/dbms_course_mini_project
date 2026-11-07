@@ -211,6 +211,7 @@ proc_label: BEGIN
     DECLARE v_journey_date DATE;
     DECLARE v_train_id INT;
     DECLARE v_run_status VARCHAR(20);
+    DECLARE v_departure_dt DATETIME;
     DECLARE v_tatkal_open_time TIME;
     DECLARE v_tatkal_open_dt DATETIME;
     DECLARE v_fare_per_passenger DECIMAL(10,2);
@@ -219,6 +220,14 @@ proc_label: BEGIN
     DECLARE v_pnr BIGINT;
     DECLARE i INT DEFAULT 0;
     DECLARE v_seat_id INT;
+    DECLARE v_candidate_id INT;
+    DECLARE v_locked_seat_id INT;
+    DECLARE v_candidates_done BOOLEAN DEFAULT FALSE;
+    DECLARE seat_candidates CURSOR FOR
+        SELECT s.seat_id FROM seat s JOIN coach c ON c.coach_id = s.coach_id
+        WHERE c.train_id = v_train_id AND c.class_code = p_class_code
+        ORDER BY s.seat_id;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_candidates_done = TRUE;
 
     -- Deadlock Handler
     DECLARE EXIT HANDLER FOR 1213
@@ -262,6 +271,18 @@ proc_label: BEGIN
         LEAVE proc_label;
     END IF;
 
+    SELECT TIMESTAMP(DATE_ADD(tr.journey_date, INTERVAL ts.day_offset DAY), ts.departure_time)
+    INTO v_departure_dt
+    FROM train_run tr JOIN train_stop ts ON ts.train_id = tr.train_id
+    JOIN train t ON t.train_id = tr.train_id AND t.is_active = TRUE
+    WHERE tr.run_id = p_run_id AND ts.station_id = p_src_id;
+    IF v_departure_dt IS NULL OR NOW() >= v_departure_dt THEN
+        SET p_pnr = NULL;
+        SET p_status = 'DEPARTED';
+        SET p_message = 'Boarding departure has passed or the train is inactive.';
+        LEAVE proc_label;
+    END IF;
+
     -- Step 3: Tatkal Window Opening Validation
     SELECT tatkal_open_time INTO v_tatkal_open_time
     FROM seat_class
@@ -296,21 +317,30 @@ proc_label: BEGIN
         seat_id INT NOT NULL
     );
 
-    -- THE HEART: SELECT ... FOR UPDATE SKIP LOCKED
-    INSERT INTO tmp_locked_seats (seat_id)
-    SELECT rs.seat_id
-    FROM run_seat rs
-    JOIN seat s ON rs.seat_id = s.seat_id
-    JOIN coach c ON s.coach_id = c.coach_id
-    WHERE rs.run_id = p_run_id
-      AND c.class_code = p_class_code
-      AND rs.quota_type = p_booking_type
-      AND rs.seat_status = 'AVAILABLE'
-    ORDER BY c.coach_number ASC, s.seat_number ASC
-    LIMIT v_passenger_count
-    FOR UPDATE SKIP LOCKED;
-
-    SELECT COUNT(*) INTO v_available_seats_count FROM tmp_locked_seats;
+    -- Candidate discovery is a consistent read. Lock exact inventory primary keys
+    -- so a sorted join cannot accidentally lock every seat before applying LIMIT.
+    SET v_candidates_done = FALSE;
+    OPEN seat_candidates;
+    candidate_loop: LOOP
+        FETCH seat_candidates INTO v_candidate_id;
+        IF v_candidates_done OR v_available_seats_count >= v_passenger_count THEN
+            LEAVE candidate_loop;
+        END IF;
+        SET v_locked_seat_id = NULL;
+        BEGIN
+            DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_locked_seat_id = NULL;
+            SELECT rs.seat_id INTO v_locked_seat_id
+            FROM run_seat rs
+            WHERE rs.run_id = p_run_id AND rs.seat_id = v_candidate_id
+              AND rs.quota_type = p_booking_type AND rs.seat_status = 'AVAILABLE'
+            FOR UPDATE SKIP LOCKED;
+        END;
+        IF v_locked_seat_id IS NOT NULL THEN
+            INSERT INTO tmp_locked_seats (seat_id) VALUES (v_locked_seat_id);
+            SET v_available_seats_count = v_available_seats_count + 1;
+        END IF;
+    END LOOP;
+    CLOSE seat_candidates;
 
     -- Check if sufficient seats were locked
     IF v_available_seats_count < v_passenger_count THEN
@@ -322,22 +352,22 @@ proc_label: BEGIN
         LEAVE proc_label;
     END IF;
 
-    -- Create Booking record in PENDING status (5-minute hold)
+    -- Create Booking record in PENDING status (8-minute hold)
     INSERT INTO booking (
         user_id, run_id, source_station_id, dest_station_id, class_code,
         booking_type, status, booking_time, expires_at, total_fare
     ) VALUES (
         p_user_id, p_run_id, p_src_id, p_dst_id, p_class_code,
-        p_booking_type, 'PENDING', NOW(), DATE_ADD(NOW(), INTERVAL 5 MINUTE), v_total_fare
+        p_booking_type, 'PENDING', NOW(), DATE_ADD(NOW(), INTERVAL 8 MINUTE), v_total_fare
     );
 
     SET v_pnr = LAST_INSERT_ID();
 
-    -- Mark locked seats as HELD for 5 minutes
+    -- Mark locked seats as HELD for 8 minutes
     UPDATE run_seat rs
     JOIN tmp_locked_seats tls ON rs.seat_id = tls.seat_id
     SET rs.seat_status = 'HELD',
-        rs.hold_expires_at = DATE_ADD(NOW(), INTERVAL 5 MINUTE),
+        rs.hold_expires_at = DATE_ADD(NOW(), INTERVAL 8 MINUTE),
         rs.held_by_pnr = v_pnr,
         rs.version_no = rs.version_no + 1
     WHERE rs.run_id = p_run_id;
@@ -372,7 +402,7 @@ proc_label: BEGIN
 
     SET p_pnr = v_pnr;
     SET p_status = 'PENDING';
-    SET p_message = 'Seats successfully held. Please complete payment within 5 minutes.';
+    SET p_message = 'Seats successfully held. Please complete payment within 8 minutes.';
 END$$
 
 -- ------------------------------------------------------------------------------
@@ -393,17 +423,20 @@ proc_pay: BEGIN
     DECLARE v_expires_at TIMESTAMP;
     DECLARE v_total_fare DECIMAL(10,2);
     DECLARE v_existing_payment_id INT;
-
-    -- Check if idempotency key was already recorded (safe retry)
-    SELECT payment_id INTO v_existing_payment_id
-    FROM payment
-    WHERE idempotency_key = p_idempotency_key;
-
-    IF v_existing_payment_id IS NOT NULL THEN
-        SET p_status = 'SUCCESS';
-        SET p_message = 'Payment already confirmed (Idempotent response).';
-        LEAVE proc_pay;
-    END IF;
+    DECLARE v_existing_pnr BIGINT;
+    DECLARE v_existing_method VARCHAR(20);
+    DECLARE v_existing_amount DECIMAL(10,2);
+    DECLARE EXIT HANDLER FOR 1062
+    BEGIN
+        ROLLBACK;
+        SET p_status = 'KEY_CONFLICT';
+        SET p_message = 'Payment key or transaction reference is already used.';
+    END;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
 
     START TRANSACTION;
 
@@ -421,6 +454,22 @@ proc_pay: BEGIN
         LEAVE proc_pay;
     END IF;
 
+    -- Serialize retries on the booking lock, then bind a key to its request.
+    SELECT payment_id, pnr, amount, method
+    INTO v_existing_payment_id, v_existing_pnr, v_existing_amount, v_existing_method
+    FROM payment WHERE idempotency_key = p_idempotency_key;
+    IF v_existing_payment_id IS NOT NULL THEN
+        ROLLBACK;
+        IF v_existing_pnr = p_pnr AND v_existing_amount = p_amount AND v_existing_method = p_method THEN
+            SET p_status = 'SUCCESS';
+            SET p_message = 'Payment already confirmed (Idempotent response).';
+        ELSE
+            SET p_status = 'KEY_CONFLICT';
+            SET p_message = 'This payment key belongs to a different request.';
+        END IF;
+        LEAVE proc_pay;
+    END IF;
+
     IF v_booking_status = 'CONFIRMED' THEN
         ROLLBACK;
         SET p_status = 'ALREADY_CONFIRMED';
@@ -428,9 +477,17 @@ proc_pay: BEGIN
         LEAVE proc_pay;
     END IF;
 
-    IF v_booking_status <> 'PENDING' OR (v_expires_at IS NOT NULL AND NOW() > v_expires_at) THEN
+    IF v_booking_status <> 'PENDING' THEN
+        ROLLBACK;
+        SET p_status = 'INVALID_STATUS';
+        SET p_message = 'Only pending bookings can be paid.';
+        LEAVE proc_pay;
+    END IF;
+
+    IF v_expires_at IS NOT NULL AND NOW() >= v_expires_at THEN
         -- Mark expired and release seats
         UPDATE booking SET status = 'EXPIRED' WHERE pnr = p_pnr;
+        UPDATE passenger SET run_id = NULL, seat_id = NULL WHERE pnr = p_pnr;
         UPDATE run_seat
         SET seat_status = 'AVAILABLE', hold_expires_at = NULL, held_by_pnr = NULL
         WHERE held_by_pnr = p_pnr;
@@ -489,12 +546,18 @@ proc_cancel: BEGIN
     DECLARE v_journey_date DATE;
     DECLARE v_departure_time TIME;
     DECLARE v_departure_dt DATETIME;
-    DECLARE v_hours_to_dep INT;
+    DECLARE v_hours_to_dep DECIMAL(12,4);
+    DECLARE v_day_offset INT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
 
     START TRANSACTION;
 
-    SELECT b.user_id, b.status, b.total_fare, b.booking_type, tr.journey_date, ts.departure_time
-    INTO v_owner_id, v_status, v_total_fare, v_booking_type, v_journey_date, v_departure_time
+    SELECT b.user_id, b.status, b.total_fare, b.booking_type, tr.journey_date, ts.departure_time, ts.day_offset
+    INTO v_owner_id, v_status, v_total_fare, v_booking_type, v_journey_date, v_departure_time, v_day_offset
     FROM booking b
     JOIN train_run tr ON b.run_id = tr.run_id
     JOIN train_stop ts ON tr.train_id = ts.train_id AND b.source_station_id = ts.station_id
@@ -502,6 +565,14 @@ proc_cancel: BEGIN
     FOR UPDATE;
 
     SELECT role INTO v_user_role FROM app_user WHERE user_id = p_user_id;
+
+    IF v_owner_id IS NULL THEN
+        ROLLBACK;
+        SET p_status = 'NOT_FOUND';
+        SET p_refund_amount = 0;
+        SET p_message = 'Booking not found.';
+        LEAVE proc_cancel;
+    END IF;
 
     -- Security Authorization Check: Owner or Admin
     IF v_owner_id <> p_user_id AND v_user_role <> 'ADMIN' THEN
@@ -521,10 +592,10 @@ proc_cancel: BEGIN
     END IF;
 
     -- Compute Hours to Departure
-    SET v_departure_dt = TIMESTAMP(v_journey_date, COALESCE(v_departure_time, '00:00:00'));
-    SET v_hours_to_dep = TIMESTAMPDIFF(HOUR, NOW(), v_departure_dt);
+    SET v_departure_dt = TIMESTAMP(DATE_ADD(v_journey_date, INTERVAL v_day_offset DAY), COALESCE(v_departure_time, '00:00:00'));
+    SET v_hours_to_dep = TIMESTAMPDIFF(SECOND, NOW(), v_departure_dt) / 3600.0;
 
-    -- Apply IRCTC Railway Refund Slabs
+    -- Project demonstration refund policy (not an official railway tariff).
     IF v_booking_type = 'TATKAL' THEN
         SET p_refund_amount = 0.00; -- 0% refund on Tatkal
     ELSE
@@ -532,6 +603,8 @@ proc_cancel: BEGIN
             SET p_refund_amount = ROUND(v_total_fare * 0.90, 2); -- 90%
         ELSEIF v_hours_to_dep >= 12 THEN
             SET p_refund_amount = ROUND(v_total_fare * 0.50, 2); -- 50%
+        ELSEIF v_hours_to_dep >= 4 THEN
+            SET p_refund_amount = ROUND(v_total_fare * 0.25, 2); -- 25%
         ELSE
             SET p_refund_amount = 0.00; -- 0%
         END IF;
@@ -563,22 +636,24 @@ END$$
 DROP PROCEDURE IF EXISTS sp_release_expired_holds$$
 CREATE PROCEDURE sp_release_expired_holds()
 BEGIN
-    -- 1. Free held seats where hold has expired
-    UPDATE run_seat
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+    START TRANSACTION;
+    -- Lock bookings first, matching payment/cancellation lock order.
+    UPDATE booking
+    SET status = 'EXPIRED'
+    WHERE status = 'PENDING' AND expires_at <= NOW();
+
+    UPDATE run_seat rs
+    JOIN booking b ON b.pnr = rs.held_by_pnr
     SET seat_status = 'AVAILABLE',
         hold_expires_at = NULL,
         held_by_pnr = NULL,
         version_no = version_no + 1
-    WHERE seat_status = 'HELD'
-      AND hold_expires_at IS NOT NULL
-      AND hold_expires_at < NOW();
-
-    -- 2. Mark pending bookings as EXPIRED
-    UPDATE booking
-    SET status = 'EXPIRED'
-    WHERE status = 'PENDING'
-      AND expires_at IS NOT NULL
-      AND expires_at < NOW();
+    WHERE rs.seat_status = 'HELD' AND b.status = 'EXPIRED';
 
     -- 3. Clear seat references for expired passengers so seats can be re-allocated
     UPDATE passenger p
@@ -586,6 +661,9 @@ BEGIN
     SET p.run_id = NULL, p.seat_id = NULL
     WHERE b.status = 'EXPIRED'
       AND p.run_id IS NOT NULL;
+    COMMIT;
 END$$
 
 DELIMITER ;
+
+GRANT EXECUTE ON PROCEDURE tatkal_db.sp_search_trains TO 'app_ro'@'localhost', 'app_ro'@'127.0.0.1';

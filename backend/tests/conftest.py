@@ -12,13 +12,48 @@ from booking_engine.models import AppUser, TrainRun, Station
 from booking_engine.auth_views import get_tokens_for_user
 
 @pytest.fixture(scope="session")
-def django_db_setup():
-    """Use pre-seeded MySQL tatkal_db database directly without attempting CREATE DATABASE."""
-    pass
+def django_db_setup(django_db_blocker):
+    """Create a disposable schema; never run mutating tests on the demo database."""
+    import os
+    import subprocess
+    import sys
+    import uuid
+    from pathlib import Path
+    import pymysql
+    from django.core.management import call_command
+    from django.db import connections
+    name = "test_tatkal_" + uuid.uuid4().hex[:10]
+    original = os.environ.get("MYSQL_DATABASE")
+    os.environ["MYSQL_DATABASE"] = name
+    root = Path(__file__).resolve().parents[2]
+    with django_db_blocker.unblock():
+        call_command("init_db", skip_checks=True)
+        subprocess.run([sys.executable, str(root / "scripts" / "seed.py")], env=os.environ.copy(), check=True, capture_output=True, text=True)
+        for alias in ("default", "readonly"):
+            connections[alias].close()
+            connections[alias].settings_dict["NAME"] = name
+        try:
+            yield
+        finally:
+            connections.close_all()
+            conn = pymysql.connect(host=os.getenv("MYSQL_HOST", "127.0.0.1"), port=int(os.getenv("MYSQL_PORT", "3306")), user=os.getenv("MYSQL_ROOT_USER", "root"), password=os.getenv("MYSQL_ROOT_PASSWORD", ""), autocommit=True)
+            with conn.cursor() as cur:
+                cur.execute(f"DROP DATABASE `{name}`")
+            conn.close()
+            if original is None:
+                os.environ.pop("MYSQL_DATABASE", None)
+            else:
+                os.environ["MYSQL_DATABASE"] = original
 
 @pytest.fixture
 def api_client():
     return APIClient()
+
+
+@pytest.fixture(autouse=True)
+def reset_throttle_cache():
+    from django.core.cache import cache
+    cache.clear()
 
 @pytest.fixture
 def customer_user():

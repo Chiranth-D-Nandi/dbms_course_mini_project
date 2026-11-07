@@ -18,7 +18,7 @@ ON SCHEDULE EVERY 30 SECOND
 STARTS CURRENT_TIMESTAMP
 ON COMPLETION PRESERVE
 ENABLE
-COMMENT 'Sweeps and releases unconfirmed seat holds older than 5 minutes every 30 seconds'
+COMMENT 'Sweeps and releases unconfirmed seat holds older than 8 minutes every 30 seconds'
 DO
 BEGIN
     CALL sp_release_expired_holds();

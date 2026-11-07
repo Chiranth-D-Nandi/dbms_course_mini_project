@@ -80,7 +80,7 @@ Strong entities have independent existence in the domain and possess distinct pr
    - `booking_type` (ENUM: `'GENERAL'`, `'TATKAL'`)
    - `status` (ENUM: `'PENDING'`, `'CONFIRMED'`, `'CANCELLED'`, `'EXPIRED'`, `'FAILED'`)
    - `booking_time` (TIMESTAMP)
-   - `expires_at` (TIMESTAMP, 5-minute timeout window for pending holds)
+   - `expires_at` (TIMESTAMP, 8-minute timeout window for pending holds)
    - `total_fare` (DECIMAL)
 
 9. **`payment`**:

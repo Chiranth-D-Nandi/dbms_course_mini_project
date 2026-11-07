@@ -56,7 +56,7 @@ export default function Navbar() {
             </span>
             <span className="hidden md:inline text-slate-600">|</span>
             <span className="hidden md:inline text-slate-400">
-              Centre for Railway Information Systems (CRIS)
+              DBMS course project · payment simulation
             </span>
           </div>
 
@@ -79,7 +79,7 @@ export default function Navbar() {
 
       {/* Main Navbar */}
       <div className="bg-[#0f2e5a] text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-between items-center gap-3 py-3 lg:flex-row lg:h-20">
           {/* Logo & Brand */}
           <Link href="/" className="flex items-center space-x-3 group">
             <div className="bg-amber-500 group-hover:bg-amber-400 p-2.5 rounded-xl text-[#0f2e5a] shadow transition flex items-center justify-center">
@@ -100,7 +100,7 @@ export default function Navbar() {
           </Link>
 
           {/* Navigation Links */}
-          <nav className="flex items-center space-x-1 sm:space-x-3">
+          <nav className="flex flex-wrap justify-center items-center gap-2">
             <Link
               href="/search"
               className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 ${

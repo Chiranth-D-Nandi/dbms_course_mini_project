@@ -24,32 +24,18 @@ export default function TatkalCountdown({
   }, [secondsRemaining]);
 
   useEffect(() => {
-    if (timeLeft <= 0) {
-      if (!isOpen && onWindowOpen) {
-        onWindowOpen();
-      }
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          if (onWindowOpen) onWindowOpen();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
+    const interval = setInterval(() => setTimeLeft(prev => Math.max(0, prev - 1)), 1000);
     return () => clearInterval(interval);
-  }, [timeLeft, isOpen, onWindowOpen]);
+  }, []);
+  useEffect(() => {
+    if (!isOpen && secondsRemaining > 0 && timeLeft === 0) onWindowOpen?.();
+  }, [timeLeft, isOpen, secondsRemaining, onWindowOpen]);
 
   const hours = Math.floor(timeLeft / 3600);
   const minutes = Math.floor((timeLeft % 3600) / 60);
   const seconds = timeLeft % 60;
 
-  if (isOpen || timeLeft <= 0) {
+  if (isOpen) {
     return (
       <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 flex items-center justify-between text-emerald-900 shadow-sm">
         <div className="flex items-center gap-3">

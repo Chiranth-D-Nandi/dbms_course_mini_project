@@ -1,93 +1,27 @@
--- Owner: Person A
--- db/08_explain_demo.sql: Query Optimization & EXPLAIN Execution Plan Analysis
--- Demonstrates query cost reduction, index selectivity, and B-Tree traversal
--- comparing unindexed full-table scans vs indexed index range/ref scans.
-
+-- Observe actual optimizer choices; no fixed timing or row-count claims.
 USE tatkal_db;
 
--- ============================================================================
--- DEMONSTRATION 1: High-Concurrency Seat Allocation Lookup
--- Query executed by sp_book_tickets to lock available seats.
--- ============================================================================
-
--- Query to analyze:
--- Finds available seats in a specific train run and class for booking lock.
-
--- Step A: Analyze performance WITH the composite index:
--- `idx_run_seat_status_quota` ON run_seat(run_id, quota, status)
+-- 1. Primary-key point lookup used to lock one allocation candidate.
 EXPLAIN FORMAT=TREE
-SELECT rs.run_seat_id, rs.seat_id
-FROM run_seat rs
-JOIN seat s ON rs.seat_id = s.seat_id
-JOIN coach c ON s.coach_id = c.coach_id
-WHERE rs.run_id = 1
-  AND rs.quota = 'GENERAL'
-  AND (rs.status = 'AVAILABLE' OR (rs.status = 'HELD' AND rs.held_until < NOW()))
-  AND c.class_code = '3A'
-LIMIT 2;
+SELECT seat_id FROM run_seat WHERE run_id=1 AND seat_id=1
+AND quota_type='GENERAL' AND seat_status='AVAILABLE';
 
--- Step B: Detailed tabular execution plan with cost estimation
-EXPLAIN
-SELECT rs.run_seat_id, rs.seat_id
-FROM run_seat rs
-JOIN seat s ON rs.seat_id = s.seat_id
-JOIN coach c ON s.coach_id = c.coach_id
-WHERE rs.run_id = 1
-  AND rs.quota = 'GENERAL'
-  AND (rs.status = 'AVAILABLE' OR (rs.status = 'HELD' AND rs.held_until < NOW()))
-  AND c.class_code = '3A'
-LIMIT 2;
+-- 2. Compare the inventory search index with an explicit ignored index.
+EXPLAIN SELECT seat_id FROM run_seat FORCE INDEX(idx_run_seat_search)
+WHERE run_id=1 AND quota_type='GENERAL' AND seat_status='AVAILABLE';
+EXPLAIN SELECT seat_id FROM run_seat IGNORE INDEX(idx_run_seat_search)
+WHERE run_id=1 AND quota_type='GENERAL' AND seat_status='AVAILABLE';
 
--- Expected Observation:
--- `type: ref` or `range` utilizing `idx_run_seat_status_quota`.
--- `rows examined`: < 100 instead of scanning all 300,000+ seat inventory rows.
-
-
--- ============================================================================
--- DEMONSTRATION 2: Train Route Matching Subquery
--- Executed during train search to locate trains visiting source before destination.
--- ============================================================================
-
--- Step A: EXPLAIN ANALYZE with composite indexes:
--- `idx_train_stop_station_train` ON train_stop(station_id, train_id)
--- `idx_train_stop_seq` ON train_stop(train_id, stop_sequence)
+-- 3. Execute and inspect route matching (read-only).
 EXPLAIN ANALYZE
-SELECT 
-    t.train_id,
-    t.train_number,
-    t.train_name,
-    ts1.departure_time AS src_dep,
-    ts2.arrival_time AS dst_arr,
-    (ts2.distance_from_source_km - ts1.distance_from_source_km) AS journey_km
-FROM train t
-JOIN train_stop ts1 ON t.train_id = ts1.train_id
-JOIN train_stop ts2 ON t.train_id = ts2.train_id
-WHERE ts1.station_id = 1    -- SBC
-  AND ts2.station_id = 2    -- MAS
-  AND ts1.stop_sequence < ts2.stop_sequence;
+SELECT t.train_number,a.departure_time,z.arrival_time,z.distance_km-a.distance_km AS distance_km
+FROM train t JOIN train_stop a ON a.train_id=t.train_id
+JOIN train_stop z ON z.train_id=t.train_id
+WHERE a.station_id=(SELECT station_id FROM station WHERE station_code='SBC')
+AND z.station_id=(SELECT station_id FROM station WHERE station_code='MAS')
+AND a.stop_seq<z.stop_seq;
 
--- Expected Observation:
--- Nested loop join with index lookup (`ref` via `station_id`), actual time < 1ms.
-
-
--- ============================================================================
--- DEMONSTRATION 3: Customer Booking History Lookup
--- Executed on User Dashboard.
--- ============================================================================
-
--- Step A: Evaluates index on `booking(user_id, booking_time)`
+-- 4. Customer history index.
 EXPLAIN FORMAT=JSON
-SELECT 
-    b.booking_id,
-    b.pnr,
-    b.status,
-    b.total_fare,
-    b.booking_time
-FROM booking b
-WHERE b.user_id = 1
-ORDER BY b.booking_time DESC
-LIMIT 10;
-
--- Expected Observation:
--- Uses `idx_booking_user_time`, eliminating filesort (`Using filesort` is avoided).
--- Execution plan shows `backward_index_scan: true` for inverted time ordering.
+SELECT pnr,status,total_fare,booking_time FROM booking
+WHERE user_id=1 ORDER BY booking_time DESC LIMIT 10;

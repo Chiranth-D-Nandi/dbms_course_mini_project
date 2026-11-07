@@ -12,6 +12,29 @@ from .models import AppUser
 from .serializers import RegisterRequestSerializer, LoginRequestSerializer, AppUserSerializer
 from .auth_backend import hash_password, verify_password, CustomUserWrapper
 from .permissions import IsAuthenticatedCustom
+from rest_framework import serializers
+from django.db import IntegrityError
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+
+
+class RefreshView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get_authenticate_header(self, request):
+        return "Bearer"
+
+    def post(self, request):
+        if not isinstance(request.data.get("refresh"), str):
+            raise serializers.ValidationError({"refresh": "A refresh token is required."})
+        try:
+            token = RefreshToken(request.data["refresh"])
+        except TokenError as exc:
+            raise InvalidToken("Refresh token is invalid or expired.") from exc
+        user = AppUser.objects.using("readonly").filter(user_id=token.get("user_id"), is_active=True).first()
+        if user is None:
+            raise InvalidToken("This account is unavailable.")
+        return Response(get_tokens_for_user(user))
 
 def get_tokens_for_user(user: AppUser):
     wrapped = CustomUserWrapper(user)
@@ -41,15 +64,18 @@ class RegisterView(APIView):
             return Response({"error": {"code": "PHONE_EXISTS", "message": "Phone number is already registered", "details": {}}}, status=status.HTTP_409_CONFLICT)
 
         hashed = hash_password(data["password"])
-        new_user = AppUser.objects.create(
-            first_name=data["first_name"],
-            last_name=data["last_name"],
-            email=data["email"],
-            phone=data["phone"],
-            password_hash=hashed,
-            role=data.get("role", "CUSTOMER"),
-            is_active=True,
-        )
+        try:
+            new_user = AppUser.objects.create(
+                first_name=data["first_name"],
+                last_name=data["last_name"],
+                email=data["email"],
+                phone=data["phone"],
+                password_hash=hashed,
+                role="CUSTOMER",
+                is_active=True,
+            )
+        except IntegrityError:
+            return Response({"error": {"code": "ACCOUNT_EXISTS", "message": "An account with this email or phone already exists.", "details": {}}}, status=409)
 
         tokens = get_tokens_for_user(new_user)
         return Response({

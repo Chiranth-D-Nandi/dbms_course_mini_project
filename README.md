@@ -1,172 +1,90 @@
-<!-- Owner: Person B -->
-# Tatkal High-Concurrency Train Booking System
+# Tatkal train booking — DBMS mini project
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Django 5.x](https://img.shields.io/badge/django-5.2-green.svg)](https://docs.djangoproject.com/)
-[![MySQL 8.0](https://img.shields.io/badge/mysql-8.0-orange.svg)](https://www.mysql.com/)
-[![ChromaDB](https://img.shields.io/badge/chromadb-vector-purple.svg)](https://www.trychroma.com/)
-[![Next.js 14](https://img.shields.io/badge/next.js-14-black.svg)](https://nextjs.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+A local course-project application with a Next.js frontend, Django REST API, MySQL 8 database, and Chroma semantic search. Payment and refund processing are simulations; no bank is connected.
 
-An enterprise-grade, high-concurrency railway ticketing engine designed to eliminate the fundamental concurrency bottlenecks of the IRCTC Tatkal booking rush. Built for the PES University DBMS Experiential Learning Project (Level 3).
+## Start on this computer
 
----
+The project is configured in `.env` to use the isolated `tatkal_review` database. Existing unrelated databases were preserved. From the repository root:
 
-## 1. Project Overview & Key Features
-
-During the opening minutes of the Tatkal booking window (10:00 AM for AC classes, 11:00 AM for Non-AC classes), thousands of concurrent requests compete for dozens of berths. Traditional systems suffer from race conditions, deadlocks, and double-booking (lost updates).
-
-This project solves these challenges at the **database layer**:
-- **Zero Double-Booking Guarantee**: Employs MySQL 8.0 InnoDB row-level locking via `SELECT ... FOR UPDATE SKIP LOCKED` inside compiled stored procedures.
-- **Sub-15ms Booking Latency**: Transactional seat hold, dynamic fare computation (`fn_calc_fare`), and PNR issuance executed directly in MySQL memory.
-- **Autonomous 8-Minute Hold Release**: Unconfirmed seats are swept every 30 seconds by a native MySQL Event (`ev_release_expired_holds`).
-- **Cognitive Vector Discovery (ChromaDB)**: 100% offline semantic search over trains and 35+ railway policy FAQs using local sentence-transformer embeddings (`all-MiniLM-L6-v2`).
-- **Idempotent Payment Confirmation**: Enforces `Idempotency-Key` headers preventing duplicate charges on network retries.
-- **Tiered Cancellation Refunds**: Implements official Indian Railway refund slabs (>48 hrs, 48-12 hrs, 12-4 hrs, <4 hrs, Tatkal 0% refund).
-
----
-
-## 2. Advanced Database Concepts Implemented
-
-| Concept | Implementation in this Codebase |
-| :--- | :--- |
-| **ACID Transactions** | Multi-table atomic reservations (`run_seat` + `booking` + `passenger`) in `sp_book_tickets`. |
-| **Row-Level Concurrency** | `SELECT ... FOR UPDATE SKIP LOCKED` eliminates wait queues and lock contention. |
-| **Stored Procedures** | `sp_generate_run_inventory`, `sp_search_trains`, `sp_book_tickets`, `sp_confirm_payment`, `sp_cancel_booking`, `sp_release_expired_holds`. |
-| **Stored Functions** | `fn_calc_fare` computing mileage rates and class-specific Tatkal surcharges. |
-| **Database Triggers** | `trg_booking_status_audit`, `trg_run_seat_audit`, `trg_passenger_validate`, `trg_booking_route_check`, `trg_prevent_booked_seat_delete`. |
-| **Relational Views** | `v_run_availability`, `v_train_route`, `v_booking_summary`, `v_admin_revenue`, `v_passenger_age`. |
-| **Full-Text Search** | MySQL `FULLTEXT` natural language index on `station(station_code, station_name, city)`. |
-| **Vector Similarity Search** | ChromaDB HNSW cosine distance search on `train_info` and `policy_faq` collections. |
-| **MySQL Event Scheduler** | `ev_release_expired_holds` running every 30 seconds to reclaim unconfirmed holds. |
-| **Database-Level Validation** | `CHECK` constraints on age ($1 \le age \le 120$), distances, platforms, and `ENUM` domains. |
-| **Least-Privilege Roles** | Dual connection separation: `app_rw` (Read-Write) and `app_ro` (Read-Only). |
-
----
-
-## 3. Team & 50/50 Work Split
-
-See [CONTRIBUTORS.md](file:///CONTRIBUTORS.md) and [OWNERSHIP.csv](file:///OWNERSHIP.csv) for granular file-by-file ownership tracking.
-
-| Contributor | Role | Core Ownership |
-| :--- | :--- | :--- |
-| **Chiranth D Nandi** (`PES2UG24AM048`) | **Person A (Data & Backend)** | MySQL DDL, stored procedures, triggers, views, events, Django backend, REST APIs, Chroma query service, concurrency tests, schema docs. |
-| **Jashruth K A** (`PES2UG24AM069`) | **Person B (Experience & Ops)** | Next.js 14 frontend, seat map UI, hold timer, seed data generator, Chroma ingestion, Locust load test, runner scripts, functional docs. |
-
----
-
-## 4. Quickstart Guide (Local Setup)
-
-### Prerequisites
-- Windows 10/11, macOS, or Linux
-- Python 3.11+
-- Node.js 18+ (Node 20+ recommended)
-- Local MySQL 8.0 server running on port `3306`
-
-### 4.1 Automated Setup Script
-
-**Windows (PowerShell)**:
-```powershell
-.\scripts\setup.ps1
-```
-
-**Linux / macOS (Bash)**:
-```bash
-chmod +x ./scripts/*.sh
-./scripts/setup.sh
-```
-
-### 4.2 Step-by-Step Manual Setup
-
-1. **Environment Configuration**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your local MySQL root password (e.g., MYSQL_ROOT_PASSWORD=YourPassword)
-   ```
-
-2. **Python Virtual Environment**:
-   ```bash
-   python -m venv .venv
-   # Windows:
-   .\.venv\Scripts\Activate.ps1
-   # Linux/macOS:
-   source .venv/bin/activate
-
-   pip install -r requirements.txt
-   ```
-
-3. **Initialize Database Schema & Objects**:
-   ```bash
-   python backend/manage.py init_db
-   ```
-
-4. **Seed Realistic Train Data & Users**:
-   ```bash
-   python scripts/seed.py
-   ```
-
-5. **Ingest ChromaDB Vector Collections (Offline Cache)**:
-   ```bash
-   python scripts/ingest_chroma.py
-   ```
-
-6. **Install Frontend Dependencies & Build**:
-   ```bash
-   cd frontend
-   npm install
-   npm run build
-   cd ..
-   ```
-
----
-
-## 5. Running the Application
-
-Start both the Django backend and Next.js frontend with a single command:
-
-**Windows (PowerShell)**:
 ```powershell
 .\scripts\dev.ps1
 ```
 
-**Linux / macOS (Bash)**:
-```bash
-./scripts/dev.sh
+Open the frontend URL printed by the launcher. It prefers http://localhost:3000 and API port 8000; if another app uses them, it selects free ports and connects the services automatically.
+
+| Account | Email | Password |
+| --- | --- | --- |
+| Customer | chiranth@example.com | Customer@123 |
+| Customer | jashruth@example.com | Customer@123 |
+| Administrator | admin@tatkal.com | Admin@123 |
+
+Registration creates customers only. Demo administrators are created by the seed script. Keep `.env` out of Git.
+
+## What works
+
+- Register, log in, refresh sessions, and log out.
+- Search stations and dated train routes; filter classes/types and sort results.
+- Inspect train timetables and coach seat maps.
+- Reserve up to six General passengers or four Tatkal passengers per booking.
+- Hold automatically assigned seats for eight minutes, then confirm a simulated UPI/card/netbanking payment with retry protection.
+- View and print tickets, see reservation history, cancel confirmed tickets, and display the computed refund.
+- Expire unpaid reservations atomically through a MySQL event every 30 seconds, or the admin sweep action.
+- Browse admin revenue/occupancy reports, inspect trigger audit logs, and schedule train runs with inventory.
+- Search the local train catalog and project-policy FAQs using sentence-transformer embeddings and ChromaDB.
+
+SQL provides the schema, foreign keys, composite keys, constraints, indexes, stored procedures, fare function, triggers, views, and expiry event. Seat allocation uses `FOR UPDATE SKIP LOCKED` and a unique active passenger-seat constraint. The Django models use real composite primary keys (Django 5.2+).
+
+## Fresh setup
+
+Requires Python 3.11+, Node.js 20+, and a running MySQL 8 server with an administrator account allowed to create the project schema, accounts, routines and events.
+
+1. Copy `.env.example` to `.env`, set `MYSQL_ROOT_PASSWORD`, and choose a new `MYSQL_DATABASE`. Quote passwords containing spaces or `#`.
+2. On Windows run `.\scripts\setup.ps1`; on Linux/macOS run `bash scripts/setup.sh`.
+3. Run the dev launcher and open the frontend.
+
+Setup creates a virtual environment, installs dependencies, initializes an empty database, seeds dated runs and demo accounts, downloads/caches the embedding model, indexes search content, and builds the frontend. The first model download needs internet; subsequent searches use the local cache. Re-running setup preserves existing project tables.
+
+Manual Windows commands:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe backend/manage.py init_db --if-empty
+.\.venv\Scripts\python.exe scripts/seed.py
+.\.venv\Scripts\python.exe scripts/ingest_chroma.py
+cd frontend
+npm ci
+npm run build
 ```
 
-- **Frontend**: `http://localhost:3000`
-- **Backend API**: `http://127.0.0.1:8000/api/`
-- **Demo Customer Credentials**: `chiranth@example.com` / `Customer@123`
-- **Demo Admin Credentials**: `admin@tatkal.com` / `Admin@123`
+`init_db --update-objects` refreshes routines, views, triggers and events while preserving table data. `init_db --reset` explicitly erases the selected project's data. It is not needed to start the application. `seed.py` extends the run calendar for the next ten days and skips existing sample payments, so rerun it when demonstrating on a later date. The SQL files target `tatkal_db` when run directly; the management command safely substitutes the database and account names from `.env`.
 
----
+## Rules used in this demonstration
 
-## 6. Running Tests
+- Journey date means the train's originating run date; stops can have overnight day offsets.
+- AC Tatkal opens at 10:00 IST and Sleeper Tatkal at 11:00 IST one day before the run. Booking after boarding departure is rejected.
+- Holds last 480 seconds. The UI countdown does not override the database deadline.
+- General cancellation refunds: 90% above 48 hours, 50% at 12–48 hours, 25% at 4–12 hours, zero below four hours. Confirmed Tatkal refunds are zero. These are simplified project rules, not an official railway tariff.
+- The map is informational; allocation is automatic. A physical seat is reserved for the whole run. Waitlists, partial-route seat reuse and live railway integration are outside scope.
 
-### 6.1 Backend Pytest & Concurrency Suite
-```bash
-.\.venv\Scripts\pytest.exe backend/tests -v
-```
+## Verify
 
-### 6.2 Locust Load Test (Simulated Rush)
-```bash
-.\.venv\Scripts\locust.exe -f scripts/locustfile.py --headless -u 100 -r 20 -t 30s --host http://127.0.0.1:8000
-```
+On Windows, `.\scripts\verify.ps1` runs the complete workflow below.
 
-### 6.3 Frontend Typecheck
-```bash
+```powershell
+.\.venv\Scripts\python.exe backend/manage.py check
+.\.venv\Scripts\python.exe -m pytest backend/tests -q
 cd frontend
 npm run typecheck
+npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
----
+Backend tests create and delete their own temporary MySQL database rather than modifying your demo database. Root credentials in `.env` are required for that provisioning. Browser tests start local API/frontend servers, use the demo database and create sample tickets/runs. They create a separate `.next-e2e` build on ports 3100/8100 and require the seeded search index. They leave the normal build and other running apps untouched.
 
-## 7. Interactive Demo Scripts for Viva Evaluation
+See [testing results](docs/testing_results.md), [demo walkthrough](docs/DEMO_SCRIPT.md), [API contract](docs/api_contract.md), and [database schema](docs/relational_schema.md). Performance results should be taken from actual local test runs, not treated as production latency guarantees.
 
-| Script | Purpose | Command |
-| :--- | :--- | :--- |
-| `demo_concurrency.ps1` | Proves ZERO double-booking under 16 concurrent threads | `.\scripts\demo_concurrency.ps1` |
-| `demo_expiry.ps1` | Demonstrates 8-minute hold timeout and seat recovery | `.\scripts\demo_expiry.ps1` |
-| `demo_tatkal_window.ps1` | Tests 10:00 AM / 11:00 AM Tatkal window rules | `.\scripts\demo_tatkal_window.ps1` |
-| `demo_reset.ps1` | Flushes and reseeds clean database state | `.\scripts\demo_reset.ps1` |
-| `preflight.ps1` | Validates MySQL, Chroma, Node, and Python preflight health | `.\scripts\preflight.ps1` |
+## Team
+
+Chiranth D Nandi and Jashruth K A. Original contribution assignments are recorded in [CONTRIBUTORS.md](CONTRIBUTORS.md) and [OWNERSHIP.csv](OWNERSHIP.csv).

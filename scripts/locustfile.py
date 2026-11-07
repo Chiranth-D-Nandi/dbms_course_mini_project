@@ -10,6 +10,8 @@ import uuid
 import random
 from datetime import date, timedelta
 from locust import HttpUser, task, between, tag
+from locust.exception import StopUser
+import os
 
 DEMO_USERS = [
     ("chiranth@example.com", "Customer@123"),
@@ -24,6 +26,8 @@ class TatkalRushUser(HttpUser):
     access_token = None
     user_email = None
 
+    quota = os.getenv("LOAD_QUOTA", "GENERAL")
+
     def on_start(self):
         """Authenticate user and obtain JWT token."""
         credentials = random.choice(DEMO_USERS)
@@ -35,6 +39,19 @@ class TatkalRushUser(HttpUser):
         if resp.status_code == 200:
             data = resp.json()
             self.access_token = data.get("tokens", {}).get("access")
+        if not self.access_token:
+            raise StopUser()
+        journey = (date.today() + timedelta(days=1 if self.quota == "TATKAL" else 3)).isoformat()
+        response = self.client.get(f"/api/trains/search/?source=SBC&dest=MAS&date={journey}", headers=self.headers)
+        if response.status_code != 200:
+            raise StopUser()
+        rows = [r for r in response.json()["trains"] if r["class_code"] == "3A"]
+        if not rows:
+            raise StopUser()
+        self.run_id = rows[0]["run_id"]
+        self.source_id = response.json()["source"]["station_id"]
+        self.dest_id = response.json()["destination"]["station_id"]
+
 
     @property
     def headers(self):
@@ -60,7 +77,7 @@ class TatkalRushUser(HttpUser):
         """Simulate users inspecting real-time seat availability."""
         # Query seat map for run_id 18
         self.client.get(
-            "/api/runs/18/seats/?class=3A&quota=TATKAL",
+            f"/api/runs/{self.run_id}/seats/?class=3A&quota={self.quota}",
             headers=self.headers,
             name="/api/runs/[id]/seats/"
         )
@@ -83,11 +100,11 @@ class TatkalRushUser(HttpUser):
         random_id = str(random.randint(1000000000, 9999999999))
 
         payload = {
-            "run_id": 18,
-            "source_station_id": 1,  # SBC
-            "dest_station_id": 2,    # MAS
+            "run_id": self.run_id,
+            "source_station_id": self.source_id,  # SBC
+            "dest_station_id": self.dest_id,    # MAS
             "class_code": "3A",
-            "booking_type": "TATKAL",
+            "booking_type": self.quota,
             "passengers": [
                 {
                     "passenger_name": f"{name} {random.randint(1, 999)}",
@@ -123,7 +140,7 @@ class TatkalRushUser(HttpUser):
                         headers={**self.headers, "Idempotency-Key": idempotency_key},
                         name="/api/payments/confirm/"
                     )
-            elif resp.status_code in (409, 429):
+            elif resp.status_code == 429 or (resp.status_code == 409 and resp.json().get("error", {}).get("details", {}).get("status") == "SOLD_OUT"):
                 # 409: Seats exhausted or held by someone else (expected under concurrency)
                 # 429: Throttled by TatkalBurstThrottle (expected under high bot-like spam)
                 resp.success()

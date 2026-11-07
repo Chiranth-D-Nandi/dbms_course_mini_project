@@ -4,9 +4,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Play, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { api } from '@/lib/api';
 
 export default function AdminRunsPage() {
   const [runIdInput, setRunIdInput] = useState('');
+  const [journeyDate, setJourneyDate] = useState('');
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,16 +20,8 @@ export default function AdminRunsPage() {
     setStatusMsg(null);
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/admin/runs/${runIdInput}/generate-inventory`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('tatkal_access_token') || ''}`,
-        },
-      });
-      const data = await res.json();
-      if (!res.ok) throw data;
-      setStatusMsg(`Successfully executed sp_generate_run_inventory(${runIdInput}): ${data.message || 'Inventory populated!'}`);
+      const data = await api.createRun(Number(runIdInput), journeyDate);
+      setStatusMsg(data.message);
     } catch (err: any) {
       setStatusMsg(`Error: ${err?.error?.message || err?.message || 'Failed to generate inventory'}`);
     } finally {
@@ -46,7 +40,7 @@ export default function AdminRunsPage() {
 
       <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Run Inventory Generator</h1>
+          <h1 className="text-xl font-bold text-slate-900">Schedule a train run</h1>
           <p className="text-xs text-slate-500">
             Invokes MySQL Stored Procedure <code>sp_generate_run_inventory(run_id)</code> to populate <code>run_seat</code> inventory table and set Tatkal quota allocations.
           </p>
@@ -63,10 +57,11 @@ export default function AdminRunsPage() {
         <form onSubmit={handleGenerateInventory} className="max-w-md space-y-3">
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-              Run ID
+              Train ID
             </label>
             <input
               type="number"
+              min="1"
               required
               value={runIdInput}
               onChange={(e) => setRunIdInput(e.target.value)}
@@ -74,6 +69,7 @@ export default function AdminRunsPage() {
               className="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-railway-blue focus:outline-none"
             />
           </div>
+          <label className="block text-sm">Journey date<input aria-label="Journey date" type="date" required value={journeyDate} min={new Date().toISOString().slice(0,10)} onChange={e => setJourneyDate(e.target.value)} className="mt-1 block w-full rounded border p-2"/></label>
 
           <button
             type="submit"
@@ -85,11 +81,12 @@ export default function AdminRunsPage() {
             ) : (
               <>
                 <Play className="w-4 h-4 text-railway-gold" />
-                <span>Execute sp_generate_run_inventory</span>
+                <span>Create run and inventory</span>
               </>
             )}
           </button>
         </form>
+        <button type="button" disabled={loading} className="text-sm font-bold text-blue-700" onClick={async () => {setLoading(true); try {const result = await api.releaseHolds(); setStatusMsg(result.message);} catch(e: any) {setStatusMsg(`Error: ${e?.error?.message || 'Hold sweep failed'}`);} finally {setLoading(false);}}}>Release expired holds now</button>
       </div>
     </div>
   );

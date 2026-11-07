@@ -12,8 +12,8 @@ from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CHROMA_DATA_DIR = REPO_ROOT / "chroma_data"
-MODEL_DIR = REPO_ROOT / "models" / "all-MiniLM-L6-v2"
+CHROMA_DATA_DIR = REPO_ROOT / os.getenv("CHROMA_PERSIST_DIRECTORY", "chroma_data")
+MODEL_DIR = REPO_ROOT / os.getenv("SENTENCE_TRANSFORMER_MODEL_PATH", "models/all-MiniLM-L6-v2")
 
 _client = None
 _model = None

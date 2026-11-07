@@ -34,7 +34,7 @@ Notation:
 11. run_seat (run_id [PK, FK -> train_run.run_id], seat_id [PK, FK -> seat.seat_id], quota_type, seat_status, hold_expires_at, held_by_pnr [FK -> booking.pnr], version_no)
 12. passenger (pnr [PK, FK -> booking.pnr], passenger_seq [PK], name, dob, gender, id_proof_type, id_proof_no, fare_amount, status, run_id [FK -> run_seat.run_id], seat_id [FK -> run_seat.seat_id], UK(run_id, seat_id))
 13. payment (payment_id [PK], pnr [FK -> booking.pnr], amount, method, status, txn_ref [UK], idempotency_key [UK], created_at)
-14. cancellation (cancellation_id [PK], pnr [PK, UK, FK -> booking.pnr], cancelled_at, refund_amount, reason)
+14. cancellation (cancellation_id [PK], pnr [UK, FK -> booking.pnr], cancelled_at, refund_amount, reason)
 15. audit_log (log_id [PK], table_name, record_id, action, old_value, new_value, changed_at)
 ```
 

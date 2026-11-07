@@ -11,6 +11,9 @@ $PYTHON = ".\.venv\Scripts\python.exe"
 & $PYTHON -c "
 import sys
 sys.path.insert(0, 'backend')
+import os, django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tatkal_core.settings')
+django.setup()
 from booking_engine.seat_views import get_tatkal_window_info
 from datetime import date, timedelta
 

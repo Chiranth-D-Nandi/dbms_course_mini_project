@@ -37,6 +37,8 @@ def test_zero_double_booking_under_concurrency():
             JOIN train t ON tr.train_id = t.train_id
             JOIN train_stop ts1 ON t.train_id = ts1.train_id AND ts1.stop_seq = 1
             JOIN train_stop ts2 ON t.train_id = ts2.train_id AND ts2.stop_seq = 2
+            WHERE tr.journey_date > CURDATE()
+              AND EXISTS (SELECT 1 FROM coach c WHERE c.train_id=t.train_id AND c.class_code='3A')
             LIMIT 1
             """
         )
@@ -46,6 +48,15 @@ def test_zero_double_booking_under_concurrency():
 
         cursor.execute("SELECT user_id FROM app_user LIMIT 1")
         user_id = cursor.fetchone()[0]
+
+    # Restrict this isolated test run to exactly eight General seats.
+    # Other seats are temporarily assigned to the alternate quota, not falsely booked.
+    with connections['default'].cursor() as cursor:
+        cursor.execute("SELECT rs.seat_id FROM run_seat rs JOIN seat s ON s.seat_id=rs.seat_id JOIN coach c ON c.coach_id=s.coach_id WHERE rs.run_id=%s AND c.class_code='3A' AND rs.seat_status='AVAILABLE' ORDER BY rs.seat_id LIMIT 8", [run_id])
+        seats = [row[0] for row in cursor.fetchall()]
+        assert len(seats) == 8
+        cursor.execute("UPDATE run_seat rs JOIN seat s ON s.seat_id=rs.seat_id JOIN coach c ON c.coach_id=s.coach_id SET rs.quota_type='TATKAL' WHERE rs.run_id=%s AND c.class_code='3A'", [run_id])
+        cursor.execute("UPDATE run_seat SET quota_type='GENERAL' WHERE run_id=%s AND seat_id IN (" + ','.join(['%s']*len(seats)) + ')', [run_id]+seats)
 
     num_threads = 16
     results = []
@@ -89,6 +100,8 @@ def test_zero_double_booking_under_concurrency():
                 "status": "ERROR",
                 "error": str(e)
             })
+        finally:
+            conn.close()
 
     threads = []
     for i in range(num_threads):
@@ -97,11 +110,17 @@ def test_zero_double_booking_under_concurrency():
         t.start()
 
     for t in threads:
-        t.join()
+        t.join(timeout=30)
+        assert not t.is_alive(), "Booking worker did not complete within 30 seconds."
+
+    assert len(results) == num_threads
+    assert not [r for r in results if r["status"] not in ("PENDING", "SOLD_OUT", "DEADLOCK_RETRY")], results
 
     # Verify concurrency integrity in database:
     successful_bookings = [r for r in results if r["status"] == "PENDING" and r["pnr"] is not None]
-    assert len(successful_bookings) > 0, f"At least some concurrent bookings should succeed. Results: {results}"
+    assert len(successful_bookings) == 8, f"Exactly eight available seats must be allocated once under contention: {results}"
+    assert sum(r["status"] == "SOLD_OUT" for r in results) == 8, results
+    print("16 concurrent requests: 8 successful holds, 8 sold out, 0 duplicate allocations.")
 
     successful_pnrs = [b["pnr"] for b in successful_bookings]
 

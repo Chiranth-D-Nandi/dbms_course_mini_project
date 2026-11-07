@@ -92,7 +92,7 @@ flowchart TD
 - **Index Type**: Hierarchical Navigable Small World (HNSW) graph using cosine distance space.
 - **Collections**:
   - `train_info`: Semantic embeddings of train descriptions, destinations, and amenities.
-  - `policy_faq`: 35+ chunks detailing Tatkal rules, cancellation slabs, and ID mandates.
+  - `policy_faq`: 14 chunks detailing Tatkal rules, cancellation slabs, and ID mandates.
 
 ---
 

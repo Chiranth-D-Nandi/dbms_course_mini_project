@@ -118,9 +118,9 @@ BEGIN
     END IF;
 
     -- Verify Age sanity (not older than 125 years)
-    IF TIMESTAMPDIFF(YEAR, NEW.dob, CURRENT_DATE) > 125 THEN
+    IF TIMESTAMPDIFF(YEAR, NEW.dob, CURRENT_DATE) NOT BETWEEN 1 AND 120 THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Passenger Validation Error: Implausible age detected (> 125 years).';
+            SET MESSAGE_TEXT = 'Passenger Validation Error: Age must be between one and 120 years.';
     END IF;
 
     -- Verify max passengers count per booking quota type

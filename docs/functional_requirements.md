@@ -2,7 +2,7 @@
 # Functional Requirements Specification (FRS)
 
 ## 1. User Authentication & Authorization (FR-01 to FR-04)
-- **FR-01: User Registration**: System shall allow new users to register with name, email, phone, password, and designated role (`CUSTOMER` or `ADMIN`).
+- **FR-01: User Registration**: System shall allow new users to register with name, email, phone, password, as a `CUSTOMER`. Administrators shall be provisioned through trusted setup, not public registration.
 - **FR-02: Secure Password Storage**: All passwords shall be salted and hashed using PBKDF2-HMAC-SHA256 prior to storage.
 - **FR-03: JWT Session Management**: System shall issue short-lived JWT access tokens (2 hours) and long-lived refresh tokens (7 days) for session continuity.
 - **FR-04: Role-Based Access Control**: System shall restrict administrative endpoints (`/api/admin/*`) exclusively to authenticated users possessing the `ADMIN` role.
@@ -26,7 +26,7 @@
 - **FR-16: Rejection of Expired Holds**: Payment confirmation submitted after hold expiration shall be rejected with an appropriate error.
 
 ## 5. Cancellation & Refunds (FR-17 to FR-18)
-- **FR-17: Graded Refund Calculation**: System shall calculate cancellation penalties according to departure proximity tiers (>48 hrs, 48-12 hrs, 12-4 hrs, <4 hrs).
+- **FR-17: Graded Refund Calculation**: System shall calculate cancellation penalties using the project refund policy: 90% above 48 hours, 50% at 12–48 hours, 25% at 4–12 hours and zero below four hours.
 - **FR-18: Tatkal No-Refund Rule**: System shall withhold 100% of ticket fare for cancellations of confirmed Tatkal tickets.
 
 ## 6. Cognitive Semantic Search (FR-19 to FR-20)

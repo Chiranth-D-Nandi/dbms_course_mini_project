@@ -36,6 +36,7 @@ staticfiles/
 # Node / Next.js
 node_modules/
 .next/
+.next-e2e/
 out/
 .pnp
 .pnp.js
@@ -74,3 +75,9 @@ Thumbs.db
 .vscode/
 *.suo
 *.user
+
+# TypeScript incremental cache
+*.tsbuildinfo
+
+# Local service logs
+.runtime/

@@ -8,8 +8,41 @@ Provides access to `v_admin_revenue`, `audit_log`, manual hold sweep, and run cr
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.db import connections
+from django.db import connections, transaction
 from .permissions import IsAdminUserRole
+from rest_framework import serializers
+from datetime import date
+from .models import Train
+
+
+class RunRequestSerializer(serializers.Serializer):
+    train_id = serializers.IntegerField(min_value=1)
+    journey_date = serializers.DateField()
+
+    def validate_journey_date(self, value):
+        if value < date.today():
+            raise serializers.ValidationError("Choose today or a future date.")
+        return value
+
+    def validate_train_id(self, value):
+        if not Train.objects.filter(train_id=value, is_active=True).exists():
+            raise serializers.ValidationError("Choose an active train from the catalog.")
+        return value
+
+
+class AdminMetricsView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request, metric):
+        if metric not in ("occupancy", "tatkal-demand"):
+            return Response({"error": {"code": "NOT_FOUND", "message": "Unknown report."}}, status=404)
+        with connections["readonly"].cursor() as cursor:
+            if metric == "occupancy":
+                cursor.execute("SELECT run_id, train_number, journey_date, occupancy_pct FROM v_admin_revenue ORDER BY journey_date DESC")
+            else:
+                cursor.execute("SELECT COUNT(*) AS tatkal_bookings FROM booking WHERE booking_type='TATKAL' AND status IN ('PENDING','CONFIRMED')")
+            columns = [c[0] for c in cursor.description]
+            return Response([dict(zip(columns, row)) for row in cursor.fetchall()])
 
 class AdminRevenueView(APIView):
     permission_classes = [IsAdminUserRole]
@@ -100,13 +133,16 @@ class AdminCreateRunView(APIView):
     permission_classes = [IsAdminUserRole]
 
     def post(self, request):
-        train_id = request.data.get("train_id")
-        journey_date = request.data.get("journey_date")
+        serializer = RunRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        train_id = serializer.validated_data["train_id"]
+        journey_date = serializer.validated_data["journey_date"]
 
         if not (train_id and journey_date):
             return Response({"error": {"code": "MISSING_PARAM", "message": "train_id and journey_date are required."}}, status=status.HTTP_400_BAD_REQUEST)
 
-        with connections["default"].cursor() as cursor:
+        with transaction.atomic(), connections["default"].cursor() as cursor:
+            cursor.execute("SELECT train_id FROM train WHERE train_id=%s FOR UPDATE", [train_id])
             cursor.execute("SELECT run_id FROM train_run WHERE train_id = %s AND journey_date = %s", [train_id, journey_date])
             existing = cursor.fetchone()
             if existing:
@@ -133,9 +169,9 @@ class AdminReleaseHoldsView(APIView):
 
     def post(self, request):
         with connections["default"].cursor() as cursor:
-            cursor.execute("CALL sp_release_expired_holds(@p_released_count);")
-            cursor.execute("SELECT @p_released_count;")
+            cursor.execute("SELECT COUNT(*) FROM run_seat WHERE seat_status = 'HELD' AND hold_expires_at <= NOW()")
             count = cursor.fetchone()[0] or 0
+            cursor.execute("CALL sp_release_expired_holds();")
             return Response({
                 "message": f"Hold sweep completed. Released {count} expired seat holds.",
                 "released_count": count

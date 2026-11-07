@@ -70,7 +70,7 @@ export default function TrainCard({ train, sourceStationId, destStationId }: Pro
             </div>
 
             <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
-              <span>Runs: <strong className="text-emerald-700 font-bold">Daily (M T W T F S S)</strong></span>
+              <span>Runs: <strong className="text-emerald-700 font-bold">Scheduled for this journey date</strong></span>
               <span>&bull;</span>
               <span>Journey: <strong className="text-slate-700 font-semibold">{train.journey_date}</strong></span>
             </div>

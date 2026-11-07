@@ -49,7 +49,7 @@ SELECT
     ts.departure_time,
     CASE
         WHEN ts.arrival_time IS NULL OR ts.departure_time IS NULL THEN 0
-        ELSE TIMESTAMPDIFF(MINUTE, ts.arrival_time, ts.departure_time)
+        ELSE MOD(TIME_TO_SEC(ts.departure_time) - TIME_TO_SEC(ts.arrival_time) + 86400, 86400) DIV 60
     END AS halt_duration_minutes,
     ts.day_offset,
     ts.distance_km
@@ -136,27 +136,30 @@ GROUP BY
 -- 5. v_admin_revenue: Aggregated revenue, bookings, cancellations & occupancy %
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE VIEW v_admin_revenue AS
-SELECT
-    t.train_id,
-    t.train_number,
-    t.train_name,
-    tr.run_id,
-    tr.journey_date,
-    COUNT(DISTINCT CASE WHEN b.status = 'CONFIRMED' THEN b.pnr END) AS confirmed_bookings,
-    COUNT(DISTINCT CASE WHEN b.status = 'CANCELLED' THEN b.pnr END) AS cancellations,
-    COALESCE(SUM(CASE WHEN b.status = 'CONFIRMED' THEN b.total_fare ELSE 0 END), 0) AS total_revenue,
-    COALESCE(SUM(CASE WHEN b.status = 'CANCELLED' THEN cn.refund_amount ELSE 0 END), 0) AS total_refunds,
-    COALESCE(SUM(CASE WHEN b.status = 'CONFIRMED' THEN b.total_fare ELSE 0 END), 0) -
-    COALESCE(SUM(CASE WHEN b.status = 'CANCELLED' THEN cn.refund_amount ELSE 0 END), 0) AS net_revenue,
-    ROUND(
-        (COUNT(DISTINCT CASE WHEN rs.seat_status = 'BOOKED' THEN rs.seat_id END) * 100.0) /
-        NULLIF(COUNT(DISTINCT rs.seat_id), 0),
-        1
-    ) AS occupancy_pct
+SELECT t.train_id, t.train_number, t.train_name, tr.run_id, tr.journey_date,
+       COALESCE(b.confirmed_bookings, 0) AS confirmed_bookings,
+       COALESCE(b.cancellations, 0) AS cancellations,
+       COALESCE(pm.total_revenue, 0) AS total_revenue,
+       COALESCE(cn.total_refunds, 0) AS total_refunds,
+       COALESCE(pm.total_revenue, 0) - COALESCE(cn.total_refunds, 0) AS net_revenue,
+       COALESCE(ROUND(rs.booked_seats * 100.0 / NULLIF(rs.total_seats, 0), 1), 0) AS occupancy_pct
 FROM train_run tr
-JOIN train t ON tr.train_id = t.train_id
-LEFT JOIN booking b ON tr.run_id = b.run_id
-LEFT JOIN cancellation cn ON b.pnr = cn.pnr
-LEFT JOIN run_seat rs ON tr.run_id = rs.run_id
-GROUP BY t.train_id, t.train_number, t.train_name, tr.run_id, tr.journey_date
-ORDER BY tr.journey_date DESC, net_revenue DESC;
+JOIN train t ON t.train_id = tr.train_id
+LEFT JOIN (
+    SELECT run_id, SUM(status = 'CONFIRMED') AS confirmed_bookings,
+           SUM(status = 'CANCELLED') AS cancellations
+    FROM booking GROUP BY run_id
+) b ON b.run_id = tr.run_id
+LEFT JOIN (
+    SELECT b.run_id, SUM(p.amount) AS total_revenue
+    FROM payment p JOIN booking b ON b.pnr = p.pnr
+    WHERE p.status IN ('SUCCESS', 'REFUNDED') GROUP BY b.run_id
+) pm ON pm.run_id = tr.run_id
+LEFT JOIN (
+    SELECT b.run_id, SUM(c.refund_amount) AS total_refunds
+    FROM cancellation c JOIN booking b ON b.pnr = c.pnr GROUP BY b.run_id
+) cn ON cn.run_id = tr.run_id
+LEFT JOIN (
+    SELECT run_id, COUNT(*) AS total_seats, SUM(seat_status = 'BOOKED') AS booked_seats
+    FROM run_seat GROUP BY run_id
+) rs ON rs.run_id = tr.run_id;

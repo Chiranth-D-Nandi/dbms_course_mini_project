@@ -10,6 +10,20 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import connections
 from .models import Station, Train, TrainStop
+from datetime import date
+
+
+class TrainListView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        with connections["readonly"].cursor() as cursor:
+            cursor.execute("""SELECT t.train_id, t.train_number, t.train_name, t.train_type,
+                (SELECT s.station_code FROM train_stop ts JOIN station s ON s.station_id=ts.station_id WHERE ts.train_id=t.train_id ORDER BY ts.stop_seq LIMIT 1),
+                (SELECT s.station_code FROM train_stop ts JOIN station s ON s.station_id=ts.station_id WHERE ts.train_id=t.train_id ORDER BY ts.stop_seq DESC LIMIT 1)
+                FROM train t WHERE t.is_active=TRUE ORDER BY t.train_number""")
+            return Response([dict(zip(['train_id','train_number','train_name','train_type','origin_code','destination_code'], row)) for row in cursor.fetchall()])
 
 class StationListView(APIView):
     authentication_classes = []
@@ -61,6 +75,13 @@ class TrainSearchView(APIView):
                     "details": {}
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            parsed_date = date.fromisoformat(journey_date)
+            if parsed_date < date.today():
+                raise ValueError()
+        except ValueError:
+            return Response({"error": {"code": "INVALID_DATE", "message": "Choose today or a future date in YYYY-MM-DD format."}}, status=400)
 
         with connections["readonly"].cursor() as cursor:
             # Resolve source
@@ -127,7 +148,8 @@ class TrainDetailView(APIView):
             cursor.execute(
                 """
                 SELECT ts.stop_seq, s.station_id, s.station_code, s.station_name, s.city,
-                       ts.arrival_time, ts.departure_time, ts.day_offset, ts.distance_km
+                       ts.arrival_time, ts.departure_time, ts.day_offset, ts.distance_km,
+                       COALESCE(MOD(TIME_TO_SEC(ts.departure_time) - TIME_TO_SEC(ts.arrival_time) + 86400, 86400) DIV 60, 0)
                 FROM train_stop ts
                 JOIN station s ON ts.station_id = s.station_id
                 WHERE ts.train_id = %s
@@ -136,6 +158,10 @@ class TrainDetailView(APIView):
                 [pk]
             )
             s_rows = cursor.fetchall()
+            cursor.execute("SELECT day_of_week FROM train_running_day WHERE train_id = %s ORDER BY day_of_week", [pk])
+            running_days = [r[0] for r in cursor.fetchall()]
+            cursor.execute("SELECT COUNT(*) FROM coach WHERE train_id = %s", [pk])
+            total_coaches = cursor.fetchone()[0]
             stops = []
             for sr in s_rows:
                 stops.append({
@@ -147,6 +173,7 @@ class TrainDetailView(APIView):
                     "arrival_time": str(sr[5]) if sr[5] else None,
                     "departure_time": str(sr[6]) if sr[6] else None,
                     "day_offset": sr[7],
+                    "halt_duration_minutes": sr[9],
                     "distance_km": sr[8]
                 })
 
@@ -156,5 +183,7 @@ class TrainDetailView(APIView):
                 "train_name": t_row[2],
                 "train_type": t_row[3],
                 "is_active": bool(t_row[4]),
+                "running_days": running_days,
+                "total_coaches": total_coaches,
                 "stops": stops
             })

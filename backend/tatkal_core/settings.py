@@ -18,10 +18,10 @@ REPO_ROOT = BASE_DIR.parent
 # Load environment from root .env
 dotenv.load_dotenv(REPO_ROOT / ".env")
 
-SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-tatkal-production-grade-key-pes2026-chiranth-jashruth")
-DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY") or os.getenv("SECRET_KEY", "local-development-only-change-before-deploying")
+DEBUG = os.getenv("DJANGO_DEBUG", os.getenv("DEBUG", "True")).lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "*"]
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -83,7 +83,9 @@ DATABASES = {
         "CONN_MAX_AGE": 300,
         "OPTIONS": {
             "charset": "utf8mb4",
-            "autocommit": False,
+            "isolation_level": "read committed",
+            "init_command": "SET time_zone = '+05:30'",
+            "autocommit": True,
             "connect_timeout": 5,
         },
     },
@@ -97,6 +99,8 @@ DATABASES = {
         "CONN_MAX_AGE": 300,
         "OPTIONS": {
             "charset": "utf8mb4",
+            "isolation_level": "read committed",
+            "init_command": "SET time_zone = '+05:30'",
             "autocommit": True,
             "connect_timeout": 5,
         },
@@ -134,8 +138,8 @@ REST_FRAMEWORK = {
 
 # SimpleJWT Settings
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", "120"))),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_REFRESH_TOKEN_LIFETIME_DAYS", "7"))),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
     "SIGNING_KEY": SECRET_KEY,
@@ -143,7 +147,8 @@ SIMPLE_JWT = {
 }
 
 # CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     "accept",

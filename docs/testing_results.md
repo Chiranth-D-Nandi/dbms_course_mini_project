@@ -1,79 +1,46 @@
-<!-- Owner: Person B -->
-# Comprehensive Testing Report & Verification Artifacts
+# Verification results
 
-This report documents the empirical testing methodology, automated test suites, concurrency stress tests, and performance benchmarks executed for the Tatkal Railway Booking System.
+Verified locally on 6–7 November 2026 with Python 3.11, Django 5.2, MySQL 8.0.33, Next.js 14.2.35 and Chromium through Playwright. The original checkout's illustrative latency/load tables have been replaced by observed results.
 
----
+| Check | Observed result |
+| --- | --- |
+| Django system check | No issues |
+| Frontend TypeScript | Passed |
+| Normal production build | Passed; includes booking, payment, ticket-detail and timetable routes |
+| Browser end-to-end suite | 5 passed |
+| Concurrency oversubscription | 16 simultaneous requests for 8 seats: 8 successful holds, 8 sold out, 0 duplicate assignments |
+| Read-only SQL examples | All 11 SELECT/EXPLAIN demonstrations executed successfully |
+| Schema documentation | Generated from the 15 actual database tables |
+| Backend suite | 31 passed in 65.71 seconds; saved JUnit report |
 
-## 1. Test Suite Summary & Coverage
+## Backend coverage
 
-Testing covers three distinct layers:
-1. **Database & Relational Model Tests** (pytest): Verifies unmanaged Django models match underlying MySQL 8.0 schema and relations.
-2. **REST API & Workflow Tests** (pytest + DRF APIClient): Verifies authentication, fulltext search, stored procedure execution, idempotency, and cancellation slabs.
-3. **Multi-Threaded Concurrency Stress Test** (pytest): Spawns concurrent threads hammering candidate seats on the same train run, asserting zero double-booking.
-4. **Locust High-Concurrency Load Test**: Simulates 100–500 concurrent users competing for Tatkal tickets during peak opening minutes.
+API/model tests cover authentication, station/route search, timetable conversion, seat maps, booking/payment/cancellation, role restrictions and semantic retrieval. Regression tests cover rejected public-admin signup, account creation and token refresh, booking ownership, payment-key binding, equivalent retries, invalid PNRs, expired payment and inventory reuse, all four General refund tiers, Tatkal opening/passenger limit/zero refund, concurrent same-key payment, exact revenue totals, date-of-birth boundaries, admin scheduling and read-only routine restrictions.
 
----
+Backend tests provision a unique disposable database, seed it, run the suite and delete that database. They do not reset the demo database. The final machine-readable report is [backend-tests.xml](artifacts/backend-tests.xml).
 
-## 2. Pytest Execution Results
+## Browser coverage
 
-### 2.1 Test Cases Executed
+1. Customer login, dated search, timetable, two-passenger reservation, hold timer, simulated payment, confirmed ticket, cancellation and booking history.
+2. Homepage station autocomplete and real catalog timetable lookup.
+3. Semantic FAQ and train discovery with loaded timetable content.
+4. Administrator reports, trigger audit log, future run/inventory creation, hold sweep and catalog.
+5. Mobile layout with no horizontal page scrolling and unauthenticated booking redirect.
 
-| Test ID | Test Function | Purpose / Assertion | Result | Latency |
-| :--- | :--- | :--- | :---: | :---: |
-| **MOD-01** | `test_app_user_query` | Verifies `AppUser` unmanaged model against MySQL `app_user` | **PASS** | 4 ms |
-| **MOD-02** | `test_station_and_train_query` | Verifies station counts and train foreign keys | **PASS** | 5 ms |
-| **MOD-03** | `test_coach_and_seat_relations` | Verifies coach composition and physical seat links | **PASS** | 6 ms |
-| **MOD-04** | `test_seat_classes_exist` | Asserts existence of SL, 3A, 2A, 1A travel classes | **PASS** | 3 ms |
-| **API-01** | `test_auth_login_and_profile` | Authenticates via SimpleJWT and reads `/api/auth/me` | **PASS** | 18 ms |
-| **API-02** | `test_station_search` | Verifies MySQL FULLTEXT search for station query | **PASS** | 12 ms |
-| **API-03** | `test_sp_search_trains_endpoint`| Invokes `sp_search_trains` and checks seat counts | **PASS** | 22 ms |
-| **API-04** | `test_seat_map_and_tatkal_status`| Validates coach seat map and 10:00/11:00 AM status | **PASS** | 15 ms |
-| **API-05** | `test_booking_and_payment_flow`| Full lifecycle: HOLD $\to$ Idempotent Pay $\to$ Cancel | **PASS** | 48 ms |
-| **API-06** | `test_admin_endpoints` | Verifies RBAC: CUSTOMER forbidden, ADMIN permitted | **PASS** | 14 ms |
-| **CONC-01**| `test_zero_double_booking_under_concurrency`| **16 threads hammer same seats: ZERO double-booking** | **PASS** | 64 ms |
+Actual captures are in [screenshots.md](screenshots.md). The browser test build uses `.next-e2e` on dedicated ports 3100/8100 so another application on port 3000 is not mistaken for this project. The normal build remains separate.
 
----
+## Measured HTTP smoke test
 
-## 3. Concurrency Stress Test Deep Dive (`CONC-01`)
+The standard-library runner `scripts/load_smoke.py` completed a two-user, ten-second run against the local Django development server:
 
-### Test Architecture:
-- **Concurrency Mechanism**: 16 concurrent operating system threads synchronized via `threading.Barrier(16)` to execute `sp_book_tickets` at the exact same millisecond.
-- **Target**: Train Run #1, Class `'3A'`, Quota `'GENERAL'`.
-- **Database Assertion**:
-  ```sql
-  SELECT p.run_seat_id, COUNT(*) as alloc_count
-  FROM passenger p
-  JOIN booking b ON p.booking_id = b.booking_id
-  WHERE b.booking_id IN (...)
-  GROUP BY p.run_seat_id
-  HAVING alloc_count > 1;
-  ```
+- 40 requests; 0 unexpected errors.
+- Average response: 261.55 ms; p95: 360.22 ms; p99: 777.95 ms.
+- Four successful holds, four confirmations, four equivalent payment retries and four cancellations, plus login, search and seat-map reads.
 
-### Empirical Result:
-- **Threads Fired**: 16
-- **Successful Holds**: 16 (within available inventory)
-- **Duplicate Seat Allocations**: **0 (Zero)**
-- **Lock Wait Timeouts / Unhandled Deadlocks**: **0**
-- **Conclusion**: Proves mathematical correctness of MySQL 8.0 `SELECT ... FOR UPDATE SKIP LOCKED`.
+Raw results: [load-smoke.json](artifacts/load-smoke.json). This small run is a workflow smoke test, not a production capacity or latency guarantee. No 250-user/12,480-request benchmark is claimed.
 
----
+Locust remains available as an optional script, but its native gevent DLL was blocked by Windows application control on this machine. The standard-library test above ran successfully without changing that policy.
 
-## 4. Locust Load Test Benchmarks (`scripts/locustfile.py`)
+## Reproduce
 
-Simulates a high-traffic Tatkal opening storm:
-- **Concurrent Users**: 250 simulated users
-- **Ramp-Up Rate**: 25 users / second
-- **Endpoints Stressed**:
-  - `GET /api/trains/search/` (Route availability query)
-  - `GET /api/runs/[id]/seats/` (Real-time seat map)
-  - `POST /api/bookings/` (Concurrent seat hold)
-  - `POST /api/payments/confirm/` (Idempotent payment confirmation)
-
-### Performance Metrics:
-- **Total Requests Handled**: 12,480
-- **Average Response Time**: 32 ms
-- **95th Percentile Latency**: 86 ms
-- **99th Percentile Latency**: 142 ms
-- **Success Rate (HTTP 200/201/409/429)**: 100.0%
-- **Data Inconsistencies Detected**: **0**
+Run `.\scripts\verify.ps1`, or follow the individual commands in README. An existing MySQL administrator account is required for temporary test-schema provisioning. Seed and ingest first when setting up another machine. The first vector request in a fresh process can take longer while the model runtime loads.

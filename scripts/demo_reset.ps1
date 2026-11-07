@@ -9,7 +9,7 @@ Write-Host "====================================================================
 $PYTHON = ".\.venv\Scripts\python.exe"
 
 Write-Host "--> Running init_db..." -ForegroundColor Green
-& $PYTHON backend\manage.py init_db
+& $PYTHON backend\manage.py init_db --reset
 
 Write-Host "--> Reseeding data..." -ForegroundColor Green
 & $PYTHON scripts\seed.py

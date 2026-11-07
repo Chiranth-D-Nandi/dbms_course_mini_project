@@ -21,7 +21,10 @@ export default function LoginPage() {
 
     try {
       const res = await api.login({ email, password });
-      if (res.user.role === 'ADMIN') {
+      const next = new URLSearchParams(window.location.search).get('next');
+      if (next?.startsWith('/') && !next.startsWith('//') && !next.includes('\\')) {
+        router.push(next);
+      } else if (res.user.role === 'ADMIN') {
         router.push('/admin');
       } else {
         router.push('/search');

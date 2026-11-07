@@ -1,0 +1,57 @@
+{
+  "timestamp_ist": "2026-11-06T23:31:27.794593+05:30",
+  "users": 2,
+  "requested_seconds": 10.0,
+  "elapsed_seconds": 11.27,
+  "requests": 40,
+  "unexpected_errors": 0,
+  "average_ms": 261.55,
+  "p95_ms": 360.22,
+  "p99_ms": 777.95,
+  "endpoints": {
+    "login": {
+      "requests": 2,
+      "statuses": {
+        "200": 2
+      }
+    },
+    "search": {
+      "requests": 9,
+      "statuses": {
+        "200": 9
+      }
+    },
+    "seat_map": {
+      "requests": 13,
+      "statuses": {
+        "200": 13
+      }
+    },
+    "booking": {
+      "requests": 4,
+      "statuses": {
+        "201": 4
+      }
+    },
+    "payment": {
+      "requests": 4,
+      "statuses": {
+        "200": 4
+      }
+    },
+    "payment_retry": {
+      "requests": 4,
+      "statuses": {
+        "200": 4
+      }
+    },
+    "cancel": {
+      "requests": 4,
+      "statuses": {
+        "200": 4
+      }
+    }
+  },
+  "errors": [],
+  "scope": "Local development-server smoke test; not a production capacity benchmark."
+}
